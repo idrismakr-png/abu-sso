@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — ABU-SSO{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <h2 id="welcome">Loading...</h2>
+            <p id="role-line" style="color:#555; font-size:14px;"></p>
+        </div>
+        <button id="logout-btn" style="background:#b71c1c; margin-top:0;">Log out</button>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Campus Wallet</h2>
+    <p style="color:#555; font-size:14px;">Balance</p>
+    <div class="balance" id="balance">—</div>
+    <div class="txn-list" id="txn-list"></div>
+</div>
+
+<div class="card">
+    <h2>Digital ID Card</h2>
+    <div class="id-card">
+        <img id="qr-img" alt="QR Code" style="background:#fff;">
+        <div class="id-card-info">
+            <p><strong>Name:</strong> <span id="id-name">—</span></p>
+            <p><strong>Matric:</strong> <span id="id-matric">—</span></p>
+            <p><strong>Role:</strong> <span id="id-role">—</span></p>
+            <p><strong>Email:</strong> <span id="id-email">—</span></p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Campus Services</h2>
+    <div class="grid">
+        <div class="service-card">
+            <h3>Student Portal</h3>
+            <p>Course registration & results</p>
+        </div>
+        <div class="service-card">
+            <h3>LMS (Moodle)</h3>
+            <p>Lectures, assignments, quizzes</p>
+        </div>
+        <div class="service-card">
+            <h3>Library</h3>
+            <p>Borrow books, pay fines</p>
+        </div>
+        <div class="service-card">
+            <h3>Hostel</h3>
+            <p>Room booking & gate access</p>
+        </div>
+    </div>
+    <p style="font-size:13px; color:#777; margin-top:14px;">
+        💡 All these services trust your ABU-SSO login — one identity, many apps.
+    </p>
+</div>
+
+<div id="error-box" class="error hidden"></div>
+
+<script>
+const TOKEN = localStorage.getItem("abu_token");
+if (!TOKEN) {
+    window.location.href = "/login";
+}
+
+const authHeaders = { "Authorization": "Bearer " + TOKEN };
+
+async function api(path) {
+    const res = await fetch(path, { headers: authHeaders });
+    if (res.status === 401) {
+        localStorage.removeItem("abu_token");
+        window.location.href = "/login";
+        return null;
+    }
+    if (!res.ok) throw new Error("Failed: " + path);
+    return res.json();
+}
+
+async function loadProfile() {
+    const me = await api("/auth/me");
+    if (!me) return;
+    document.getElementById("welcome").textContent = "Welcome, " + (me.full_name || me.email);
+    document.getElementById("role-line").textContent =
+        me.role.charAt(0).toUpperCase() + me.role.slice(1) +
+        (me.matric_no ? " • " + me.matric_no : "");
+    document.getElementById("id-name").textContent = me.full_name || "—";
+    document.getElementById("id-matric").textContent = me.matric_no || "—";
+    document.getElementById("id-role").textContent = me.role;
+    document.getElementById("id-email").textContent = me.email;
+}
+
+async function loadWallet() {
+    const wallet = await api("/wallet");
+    if (!wallet) return;
+    document.getElementById("balance").textContent = "₦" + wallet.balance;
+
+    const txns = await api("/wallet/transactions");
+    const box = document.getElementById("txn-list");
+    if (!txns || txns.length === 0) {
+        box.innerHTML = '<p style="color:#777; font-size:13px;">No transactions yet.</p>';
+        return;
+    }
+    box.innerHTML = txns.map(t => `
+        <div class="txn-row">
+            <span>${t.description || t.type}</span>
+            <span class="${t.type === 'credit' ? 'txn-credit' : 'txn-debit'}">
+                ${t.type === 'credit' ? '+' : '−'}₦${t.amount}
+            </span>
+        </div>
+    `).join("");
+}
+
+async function loadIdCard() {
+    const card = await api("/id-card");
+    if (!card) return;
+    document.getElementById("qr-img").src = card.qr_data_url;
+}
+
+document.getElementById("logout-btn").addEventListener("click", () => {
+    localStorage.removeItem("abu_token");
+    window.location.href = "/login";
+});
+
+(async () => {
+    try {
+        await loadProfile();
+        await loadWallet();
+        await loadIdCard();
+    } catch (err) {
+        const box = document.getElementById("error-box");
+        box.textContent = err.message;
+        box.classList.remove("hidden");
+    }
+})();
+</script>
+{% endblock %}

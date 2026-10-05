@@ -1,0 +1,132 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f1f8f4;
+    color: #222;
+    line-height: 1.5;
+}
+
+.navbar {
+    background: #1b5e20;
+    color: white;
+    padding: 14px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.navbar h1 { font-size: 18px; font-weight: 600; }
+.navbar a { color: #c8e6c9; text-decoration: none; margin-left: 16px; font-size: 14px; }
+.navbar a:hover { color: white; }
+
+.container {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.card {
+    background: white;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+h2 { margin-bottom: 16px; color: #1b5e20; font-size: 20px; }
+
+label { display: block; margin-top: 12px; font-weight: 600; font-size: 14px; }
+
+input[type=email], input[type=password], input[type=text] {
+    width: 100%;
+    padding: 10px 12px;
+    margin-top: 6px;
+    border: 1px solid #c8d8cb;
+    border-radius: 6px;
+    font-size: 15px;
+}
+
+button {
+    background: #1b5e20;
+    color: white;
+    border: none;
+    padding: 11px 20px;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 18px;
+}
+
+button:hover { background: #144a17; }
+
+.error {
+    background: #fdecea;
+    color: #b71c1c;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-size: 14px;
+}
+
+.success {
+    background: #e7f5e9;
+    color: #1b5e20;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-top: 12px;
+    font-size: 14px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.service-card {
+    background: #f1f8f4;
+    border: 1px solid #d4e7d8;
+    border-radius: 8px;
+    padding: 18px;
+    text-align: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.service-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+.service-card h3 { color: #1b5e20; margin-bottom: 6px; font-size: 16px; }
+.service-card p { font-size: 13px; color: #555; }
+
+.balance {
+    font-size: 32px;
+    font-weight: 700;
+    color: #1b5e20;
+    margin: 10px 0;
+}
+
+.id-card {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.id-card img { width: 180px; height: 180px; border: 1px solid #ddd; border-radius: 8px; }
+.id-card-info p { margin: 4px 0; font-size: 14px; }
+
+.hidden { display: none; }
+
+.txn-list { margin-top: 12px; }
+.txn-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+}
+.txn-row:last-child { border-bottom: none; }
+.txn-credit { color: #1b5e20; font-weight: 600; }
+.txn-debit { color: #b71c1c; font-weight: 600; }

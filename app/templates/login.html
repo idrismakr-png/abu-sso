@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Login — ABU-SSO{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 420px; margin: 0 auto;">
+    <h2>Sign in</h2>
+    <p style="font-size: 14px; color: #555; margin-bottom: 8px;">
+        Use your ABU credentials to access all campus services.
+    </p>
+
+    <form id="login-form">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autocomplete="email">
+
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password">
+
+        <button type="submit" id="login-btn">Sign in</button>
+    </form>
+
+    <div id="error-box" class="error hidden"></div>
+</div>
+
+<script>
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const errBox = document.getElementById("error-box");
+    const btn = document.getElementById("login-btn");
+
+    errBox.classList.add("hidden");
+    btn.disabled = true;
+    btn.textContent = "Signing in...";
+
+    try {
+        const res = await fetch("/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.detail || "Login failed");
+        }
+
+        const data = await res.json();
+        localStorage.setItem("abu_token", data.access_token);
+        window.location.href = "/dashboard";
+    } catch (err) {
+        errBox.textContent = err.message;
+        errBox.classList.remove("hidden");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Sign in";
+    }
+});
+</script>
+{% endblock %}
