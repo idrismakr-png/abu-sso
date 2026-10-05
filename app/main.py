@@ -1,17 +1,22 @@
 from fastapi import FastAPI
 
+from app.config import settings
+from app.routers import health
+
 app = FastAPI(
-    title="ABU-SSO",
+    title=settings.app_name,
     description="Unified Single Sign-On & Digital Campus Wallet",
-    version="0.1.0",
+    version=settings.app_version,
 )
 
+# Register routers
+app.include_router(health.router)
 
-@app.get("/")
+
+@app.get("/", tags=["Root"])
 def read_root():
-    return {"message": "Welcome to ABU-SSO", "status": "ok"}
-
-
-@app.get("/health")
-def health_check():
-    return {"status": "healthy", "service": "abu-sso"}
+    return {
+        "message": f"Welcome to {settings.app_name}",
+        "status": "ok",
+        "version": settings.app_version,
+    }
