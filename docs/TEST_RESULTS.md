@@ -12,32 +12,36 @@
 
 | Metric | Value |
 |--------|-------|
-| Total tests | **69** |
-| Tests passing | **69 (100%)** |
+| Total tests | **74** |
+| Tests passing | **74 (100%)** |
 | Line coverage | **96%** (473 statements, 19 missed) |
 | SAST findings (Bandit) | **0** |
 | CI status | ✅ Green |
-| Test framework | pytest 9.1.1 + httpx + FastAPI TestClient |
+| Test framework | pytest 9.1.1 + httpx + Playwright |
 
 ---
 
 ## 2. Testing Strategy (Module II)
 
-ABU-SSO uses a **three-layer testing pyramid**, complemented by static analysis and continuous integration.
+ABU-SSO uses a **four-layer testing pyramid**, complemented by static analysis and continuous integration.
 
 | Layer | Test Count | Scope | Tooling |
 |-------|:----------:|-------|---------|
 | **Unit** | 7 | Pure functions (`hash_password`, `verify_password`) | pytest |
-| **Service** | 29 | Business logic (`user_service`, `wallet_service`, `admin_service`) | pytest + SQLAlchemy |
-| **Integration** | 33 | HTTP endpoints via FastAPI TestClient | pytest + httpx |
+| **Service** | 41 | Business logic (`user_service`, `wallet_service`, `admin_service`) | pytest + SQLAlchemy |
+| **Integration** | 21 | HTTP endpoints via FastAPI TestClient | pytest + httpx |
+| **System (E2E)** | 5 | Full browser-driven user flows | pytest + Playwright + Chromium |
 
-**Test isolation:** every test runs against a temporary SQLite database created by `tests/conftest.py`. The production `DATABASE_URL` is overridden during the test session, and tables are wiped between tests — so tests are independent and never touch real data.
+**Test isolation:** every test runs against a temporary SQLite database created by `tests/conftest.py` (and `tests/e2e/conftest.py` for E2E). The production `DATABASE_URL` is overridden during the test session, and tables are wiped between tests — so tests are independent and never touch real data.
+
+**E2E isolation:** the E2E layer spins up a **separate uvicorn process on port 8001** with its own temp database, then launches headless Chromium via Playwright. Real HTTP requests, real rendering, real JavaScript. Your local `abu-sso.db` and running dev server are untouched.
 
 **Red–Green–Refactor influence:** although the full TDD cycle was not followed for every line, tests were written for each business rule *before* the UI was built, and existing tests caught two bugs during development.
 
 ---
 
 ## 3. Coverage Report
+
 Name Stmts Miss Cover Missing
 
 app_init_.py 0 0 100%
@@ -76,6 +80,8 @@ TOTAL 473 19 96%
 
 **Why some lines are uncovered:** the remaining uncovered lines are defensive exception paths (e.g., SQLite file cleanup on session teardown) that are difficult to exercise without environment manipulation. This is acceptable residual coverage.
 
+**Note on system tests:** the E2E tests are marked with `@pytest.mark.e2e` and are **excluded from the default `pytest` run** for speed. They run explicitly with `pytest tests/e2e -m e2e` locally and are executed in a separate CI job on every push.
+
 ---
 
 ## 4. Test Inventory
@@ -98,11 +104,23 @@ TOTAL 473 19 96%
 
 **`tests/test_wallet_service.py` (12 tests)** — Wallet auto-creation, idempotency, top-up, pay, insufficient funds, zero/negative amounts, transaction list ordering.
 
-**`tests/test_admin.py` (20 tests)** — RBAC enforcement, user listing, role changes, activate/deactivate, deactivated user login rejection, admin top-up, stats aggregation, error handling.
+**`tests/test_admin.py` (16 tests)** — RBAC enforcement, user listing, role changes, activate/deactivate, deactivated user login rejection, admin top-up, stats aggregation, error handling.
 
 ### 4.3 Integration Tests — `tests/test_api_integration.py` (21 tests)
 
 Full HTTP flows: register, duplicate rejection, invalid input, login, missing/bad token, `/auth/me`, ID card generation, wallet top-up/pay, transaction listing, health check, root endpoint.
+
+### 4.4 System (E2E) Tests — `tests/e2e/test_e2e.py` (5 tests)
+
+Browser-driven tests that spin up a real server on port 8001 with a temporary database, launch headless Chromium, and simulate a user:
+
+| Test | What it verifies |
+|------|------------------|
+| `test_login_page_renders` | The `/login` page loads with email + password fields |
+| `test_login_success_redirects_to_dashboard` | Full authentication flow through the UI |
+| `test_dashboard_shows_user_data_and_qr` | Profile, wallet, and QR code render correctly |
+| `test_logout_redirects_to_login` | Session clearing + client-side guard |
+| `test_student_cannot_access_admin_page` | RBAC enforced at UI level (admin button hidden, `/admin` redirects students) |
 
 ---
 
@@ -133,17 +151,23 @@ Low: 0
 ## 6. Continuous Integration
 
 **Workflow:** `.github/workflows/ci.yml`  
-**Trigger:** every push to `main` and every pull request  
-**Runner:** Ubuntu latest, Python 3.12  
-**Steps:**
+**Trigger:** every push to `main` and every pull request
+
+**Job 1 — `test`:**
 1. Checkout code
 2. Set up Python 3.12
 3. Install dependencies from `requirements.txt`
-4. Run `pytest -v` — all tests must pass
+4. Run `pytest -v` — the 69 fast tests must pass
 
-**Status:** ✅ Green (34-second runtime)
+**Job 2 — `e2e`** (runs only if Job 1 passes):
+1. Checkout code + install dependencies
+2. Install Playwright and Chromium (with system deps)
+3. Run `pytest tests/e2e -m e2e -v` — the 5 browser-driven tests must pass
 
-The CI badge in the README shows the current status. A failing test blocks merge.
+**Status:** ✅ Green  
+**Average runtime:** ~50 seconds (both jobs)
+
+The CI badge in the README shows current status. A failing test blocks merge.
 
 ---
 
@@ -153,10 +177,13 @@ The CI badge in the README shows the current status. A failing test blocks merge
 # Activate environment
 conda activate abu-sso
 
-# Run all tests
+# Run fast tests (unit + service + integration)
 pytest -v
 
-# Run with coverage
+# Run E2E system tests
+pytest tests/e2e -m e2e -v
+
+# Run coverage on fast tests
 pytest --cov=app --cov-report=term-missing
 
 # Run with HTML coverage report
@@ -167,48 +194,7 @@ pytest --cov=app --cov-report=html
 pip install bandit
 bandit -r app/
 
-
-**Interpretation:** no common Python vulnerabilities (hardcoded credentials, unsafe `eval`, weak cryptography, shell injection, etc.) were detected.
-
----
-
-## 6. Continuous Integration
-
-**Workflow:** `.github/workflows/ci.yml`  
-**Trigger:** every push to `main` and every pull request  
-**Runner:** Ubuntu latest, Python 3.12  
-**Steps:**
-1. Checkout code
-2. Set up Python 3.12
-3. Install dependencies from `requirements.txt`
-4. Run `pytest -v` — all tests must pass
-
-**Status:** ✅ Green (34-second runtime)
-
-The CI badge in the README shows the current status. A failing test blocks merge.
-
----
-
-## 7. How to Reproduce These Results
-
-```bash
-# Activate environment
-conda activate abu-sso
-
-# Run all tests
-pytest -v
-
-# Run with coverage
-pytest --cov=app --cov-report=term-missing
-
-# Run with HTML coverage report
-pytest --cov=app --cov-report=html
-# Open htmlcov/index.html in a browser
-
-# Run SAST
-pip install bandit
-bandit -r app/
-Expected outcome: 69 tests pass, coverage ≥ 90%, Bandit reports 0 findings.
+Expected outcome: 69 tests pass (fast) + 5 E2E tests pass, coverage ≥ 90%, Bandit reports 0 findings.
 
 8. Traceability
 Every Functional Requirement (FR) is traced to at least one test. See docs/RTM.md for the full Requirements Traceability Matrix.
@@ -220,7 +206,7 @@ Authentication & registration	FR-01, FR-02, FR-03, FR-04, FR-05, FR-06	100%
 ID card	FR-07	100%
 Wallet	FR-08, FR-09, FR-10, FR-11, FR-12	100%
 Roles & RBAC	FR-13	100%
-Platform (health, UI)	FR-14 (automated), FR-15 (manual)	50% automated, 100% verified
+Platform (health, UI)	FR-14 (automated), FR-15 (E2E)	100%
 
 9. Quality Metrics — Dashboard
 Metric	Value	Target	Status
@@ -229,5 +215,5 @@ Line coverage	96%	≥ 70%	✅
 SAST findings	0	0	✅
 CI pass rate	100%	100%	✅
 Tests per requirement	≥ 1	≥ 1	✅
-
+Test layers	4 (unit + service + integration + system)	≥ 3	✅
 

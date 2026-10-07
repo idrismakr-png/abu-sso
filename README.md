@@ -41,6 +41,7 @@ A unified authentication and campus services platform for **Ahmadu Bello Univers
 - 📖 **Auto-Generated API Docs** — OpenAPI 3.0 at `/docs`
 - ✅ **69 Automated Tests** — 96% line coverage
 - 🤖 **Continuous Integration** — GitHub Actions on every push
+- 🎭 **Four Test Layers** — 74 tests: unit + service + integration + **system (Playwright E2E)**
 - 🛡️ **SAST Clean** — 0 findings across 525 lines (Bandit)
 - ☁️ **Deployed** — Render (web) + Neon (PostgreSQL)
 
