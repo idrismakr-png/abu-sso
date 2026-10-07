@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.database import Base, engine
 from app.models import User, Transaction, Wallet  # noqa: F401 — registers models
-from app.routers import auth, health, id_card, pages, wallet
+from app.routers import admin, auth, health, id_card, pages, wallet
 
 app = FastAPI(
     title=settings.app_name,
@@ -26,6 +26,7 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(id_card.router)
 app.include_router(wallet.router)
+app.include_router(admin.router)
 app.include_router(pages.router)
 
 

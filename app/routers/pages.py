@@ -18,3 +18,8 @@ def login_page(request: Request):
 @router.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
 def dashboard_page(request: Request):
     return templates.TemplateResponse(request, "dashboard.html")
+
+
+@router.get("/admin", response_class=HTMLResponse, include_in_schema=False)
+def admin_page(request: Request):
+    return templates.TemplateResponse(request, "admin.html")
