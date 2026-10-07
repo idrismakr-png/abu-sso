@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # JWT settings (used later for authentication)
-    jwt_secret: str = "change-me-in-production"
+    jwt_secret: str = "change-me-in-production-with-a-much-longer-key-please-min-32-bytes"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
 
