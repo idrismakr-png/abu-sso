@@ -41,25 +41,25 @@
 <div class="card">
     <h2>Campus Services</h2>
     <div class="grid">
-        <div class="service-card">
+        <a class="service-card" id="link-portal" href="#">
             <h3>Student Portal</h3>
             <p>Course registration & results</p>
-        </div>
-        <div class="service-card">
+        </a>
+        <a class="service-card" id="link-lms" href="#">
             <h3>LMS (Moodle)</h3>
             <p>Lectures, assignments, quizzes</p>
-        </div>
-        <div class="service-card">
+        </a>
+        <a class="service-card" id="link-library" href="#">
             <h3>Library</h3>
             <p>Borrow books, pay fines</p>
-        </div>
-        <div class="service-card">
+        </a>
+        <div class="service-card" style="opacity:0.55;">
             <h3>Hostel</h3>
             <p>Room booking & gate access</p>
         </div>
     </div>
     <p style="font-size:13px; color:#777; margin-top:14px;">
-        💡 All these services trust your ABU-SSO login — one identity, many apps.
+        💡 Clicking a service opens it in a new tab — already authenticated via your ABU-SSO login.
     </p>
 </div>
 
@@ -82,6 +82,25 @@ async function api(path) {
     }
     if (!res.ok) throw new Error("Failed: " + path);
     return res.json();
+}
+
+function wireServiceLinks() {
+    // Mock services run locally on separate ports.
+    // In production these would be hosted subdomains (e.g., portal.abu.edu.ng).
+    const services = {
+        "link-portal":  "http://127.0.0.1:4001",
+        "link-lms":     "http://127.0.0.1:4002",
+        "link-library": "http://127.0.0.1:4003",
+    };
+    for (const [id, baseUrl] of Object.entries(services)) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.href = baseUrl + "/?token=" + encodeURIComponent(TOKEN);
+            el.target = "_blank";
+            el.style.textDecoration = "none";
+            el.style.color = "inherit";
+        }
+    }
 }
 
 async function loadProfile() {
@@ -135,6 +154,7 @@ document.getElementById("logout-btn").addEventListener("click", () => {
 
 (async () => {
     try {
+        wireServiceLinks();
         await loadProfile();
         await loadWallet();
         await loadIdCard();

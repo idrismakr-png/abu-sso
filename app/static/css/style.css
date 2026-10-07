@@ -130,3 +130,13 @@ button:hover { background: #144a17; }
 .txn-row:last-child { border-bottom: none; }
 .txn-credit { color: #1b5e20; font-weight: 600; }
 .txn-debit { color: #b71c1c; font-weight: 600; }
+a.service-card {
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}
+
+a.service-card:hover {
+    border-color: #1b5e20;
+    box-shadow: 0 4px 12px rgba(27, 94, 32, 0.15);
+}

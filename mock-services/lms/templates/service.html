@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ service_name }}</title>
+    <style>
+        body { font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+               background: #f1f8f4; margin: 0; padding: 0; color: #222; }
+        .bar { background: {{ service_color }}; color: white; padding: 14px 24px;
+               display: flex; justify-content: space-between; align-items: center; }
+        .bar h1 { font-size: 18px; margin: 0; }
+        .bar a { color: #c8e6c9; text-decoration: none; margin-left: 16px; font-size: 14px; }
+        .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        .card { background: white; border-radius: 10px; padding: 24px;
+                margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        h2 { color: {{ service_color }}; margin-top: 0; }
+        .badge { display: inline-block; background: #e7f5e9; color: #1b5e20;
+                 padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+        .sso-badge { display: inline-block; background: #fff3e0; color: #e65100;
+                     padding: 6px 12px; border-radius: 6px; font-size: 13px;
+                     margin-bottom: 14px; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 12px; }
+        td { padding: 10px; border-bottom: 1px solid #eee; }
+        td:first-child { font-weight: 600; color: #555; width: 140px; }
+        .btn { display: inline-block; background: {{ service_color }}; color: white;
+               padding: 10px 18px; border-radius: 6px; text-decoration: none;
+               margin-top: 12px; font-size: 14px; }
+        .btn:hover { filter: brightness(0.9); }
+    </style>
+</head>
+<body>
+    <div class="bar">
+        <h1>{{ service_name }}</h1>
+        <div>
+            <a href="/health">Health</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="sso-badge">🔐 Authenticated via ABU-SSO</div>
+            <h2>Welcome to {{ service_name }}</h2>
+            <p style="color:#555;">{{ service_description }}</p>
+        </div>
+
+        <div class="card">
+            <h2>Your Session</h2>
+            <p>This service did <strong>not</strong> prompt you for a password. It verified your ABU-SSO token with the identity provider.</p>
+            <table>
+                <tr><td>Name</td><td>{{ user.full_name or "—" }}</td></tr>
+                <tr><td>Email</td><td>{{ user.email }}</td></tr>
+                <tr><td>Role</td><td>{{ user.role }}</td></tr>
+                <tr><td>Matric</td><td>{{ user.matric_no or "—" }}</td></tr>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Feature Placeholder</h2>
+            <p>In a real deployment, this would be where {{ service_name }}'s actual features live (e.g., course registration, results, transcripts).</p>
+            <a class="btn" href="/">Reload</a>
+        </div>
+    </div>
+</body>
+</html>
