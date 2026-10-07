@@ -3,13 +3,30 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import settings
 
-# `check_same_thread` only matters for SQLite — allows use across threads
-connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
+
+def _normalize_db_url(url: str) -> str:
+    """Normalise DB URL for SQLAlchemy 2.x.
+
+    - Render provides `postgres://` which SQLAlchemy 2.x rejects.
+    - We rewrite it to `postgresql+psycopg://` so it uses psycopg v3.
+    """
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+psycopg://", 1)
+    elif url.startswith("postgresql://") and "+psycopg" not in url:
+        url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+
+DATABASE_URL = _normalize_db_url(settings.database_url)
+
+# `check_same_thread` only matters for SQLite
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
 engine = create_engine(
-    settings.database_url,
+    DATABASE_URL,
     connect_args=connect_args,
-    echo=False,  # set to True if you want to see every SQL statement
+    echo=False,
+    pool_pre_ping=True,  # reconnect if the DB connection died
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
