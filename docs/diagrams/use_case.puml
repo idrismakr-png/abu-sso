@@ -1,0 +1,55 @@
+@startuml ABU-SSO Use Case Diagram
+title ABU-SSO — Use Case Diagram
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor Student
+actor Staff
+actor Admin
+actor "Third-Party Service" as TPS
+
+rectangle "ABU-SSO" {
+  usecase "UC-01 Register Account" as UC01
+  usecase "UC-02 Log In" as UC02
+  usecase "UC-03 View Profile" as UC03
+  usecase "UC-04 View Digital ID Card" as UC04
+  usecase "UC-05 Top Up Wallet" as UC05
+  usecase "UC-06 Pay from Wallet" as UC06
+  usecase "UC-07 View Transaction History" as UC07
+  usecase "UC-08 SSO to Third-Party Service" as UC08
+  usecase "UC-09 Administer Users" as UC09
+  usecase "UC-10 Health Check" as UC10
+}
+
+Student --> UC01
+Student --> UC02
+Student --> UC03
+Student --> UC04
+Student --> UC05
+Student --> UC06
+Student --> UC07
+Student --> UC08
+
+Staff --> UC01
+Staff --> UC02
+Staff --> UC03
+Staff --> UC04
+Staff --> UC05
+Staff --> UC06
+Staff --> UC07
+Staff --> UC08
+
+Admin --> UC09
+Admin --> UC03
+
+TPS --> UC08
+
+note right of UC08
+  Third-party services trust
+  the JWT issued by ABU-SSO,
+  enabling single sign-on.
+end note
+
+@enduml

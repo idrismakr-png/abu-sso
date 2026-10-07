@@ -1,0 +1,64 @@
+@startuml ABU-SSO Login & Protected Access
+title ABU-SSO — Sequence Diagram: Login and Access a Protected Resource
+
+actor User
+participant Browser
+participant "Auth Router\n(/auth/login, /wallet)" as AuthRouter
+participant "User Service" as UserService
+participant "Wallet Service" as WalletService
+participant "JWT Utility" as JWTUtil
+database "SQLite /\nPostgreSQL" as DB
+
+== 1. Login ==
+User -> Browser: Enter email + password
+Browser -> AuthRouter: POST /auth/login
+activate AuthRouter
+AuthRouter -> UserService: authenticate_user(email, password)
+activate UserService
+UserService -> DB: SELECT * FROM users WHERE email = ?
+activate DB
+DB --> UserService: user row (with password_hash)
+deactivate DB
+UserService -> UserService: verify_password(bcrypt)
+UserService --> AuthRouter: user (or None)
+deactivate UserService
+AuthRouter -> JWTUtil: create_access_token(user.id)
+activate JWTUtil
+JWTUtil --> AuthRouter: signed JWT (exp = now + 15 min)
+deactivate JWTUtil
+AuthRouter --> Browser: 200 OK { access_token, token_type: "bearer" }
+deactivate AuthRouter
+
+Browser -> Browser: store token in localStorage
+
+== 2. Access protected resource ==
+Browser -> AuthRouter: GET /wallet\nAuthorization: Bearer <JWT>
+activate AuthRouter
+AuthRouter -> JWTUtil: decode_token(<JWT>)
+activate JWTUtil
+JWTUtil --> AuthRouter: user_id (or None if invalid)
+deactivate JWTUtil
+
+alt token invalid or expired
+  AuthRouter --> Browser: 401 Unauthorized
+else token valid
+  AuthRouter -> WalletService: get_or_create_wallet(user_id)
+  activate WalletService
+  WalletService -> DB: SELECT wallet WHERE user_id = ?
+  activate DB
+  DB --> WalletService: wallet row (or None)
+  deactivate DB
+  alt wallet does not exist
+    WalletService -> DB: INSERT wallet (balance = 0.00)
+    activate DB
+    DB --> WalletService: new wallet
+    deactivate DB
+  end
+  WalletService --> AuthRouter: wallet
+  deactivate WalletService
+  AuthRouter --> Browser: 200 OK { id, user_id, balance, created_at }
+end
+
+deactivate AuthRouter
+
+@enduml

@@ -1,0 +1,59 @@
+@startuml ABU-SSO Class / ERD
+title ABU-SSO — Class Diagram / Entity Relationship Diagram
+
+skinparam classAttributeIconSize 0
+skinparam classFontStyle bold
+
+class User {
+  + id : str <<PK, UUID>>
+  --
+  email : str <<unique, indexed>>
+  password_hash : str
+  full_name : str
+  role : str  {student | staff | admin}
+  matric_no : str <<indexed>>
+  is_active : bool
+  created_at : datetime
+  --
+  + __repr__()
+}
+
+class Wallet {
+  + id : str <<PK, UUID>>
+  --
+  user_id : str <<FK → User.id, unique, indexed>>
+  balance : Decimal(10,2)
+  created_at : datetime
+  --
+  + __repr__()
+}
+
+class Transaction {
+  + id : str <<PK, UUID>>
+  --
+  wallet_id : str <<FK → Wallet.id, indexed>>
+  amount : Decimal(10,2)
+  type : str  {credit | debit}
+  description : str
+  created_at : datetime
+  --
+  + __repr__()
+}
+
+User "1" -- "0..1" Wallet : owns >
+Wallet "1" -- "0..*" Transaction : contains >
+
+note right of User
+  A User has exactly
+  zero or one Wallet.
+  The Wallet is created
+  lazily on first access.
+end note
+
+note right of Wallet
+  Deleting a Wallet
+  cascades to its
+  Transactions.
+end note
+
+@enduml
