@@ -71,6 +71,7 @@ An **iterative and incremental Agile** process was used because the problem stat
 | 9 | Web UI (login + dashboard) |
 | 10 | 53 automated tests + GitHub Actions CI |
 | 11 | RBAC + Admin panel + 16 more tests + cloud deployment |
+| 12 | Distributed mock SSO services (Portal, LMS, Library) |
 
 **Why not Waterfall?** Wallet and admin features were added *after* the auth prototype was working — an upfront plan could not have anticipated the exact wallet schema or the need for an admin panel. Iteration allowed course correction.
 
@@ -104,6 +105,8 @@ HTTP → Router → Service → Model → Database
 
 
 **Inter-component communication:** synchronous REST over HTTP with JWT in the `Authorization: Bearer` header. This is the natural fit for ABU-SSO because third-party services (Portal, LMS) need an immediate auth decision on each request.
+
+**Distributed layer:** three independent mock services (Portal on port 4001, LMS on 4002, Library on 4003) each verify the JWT by calling the IdP's `/auth/me` endpoint. This demonstrates real Single Sign-On across process boundaries. See `docs/DESIGN.md` Section 8.
 
 **Data model:** three tables — `users`, `wallets`, `transactions`. A user owns 0 or 1 wallet, a wallet owns 0..N transactions. See `docs/diagrams/class_model.png`.
 
@@ -187,7 +190,6 @@ See Sections 5, 6, and `docs/RISK_AND_MAINTENANCE.md`.
 
 ### 3.2 Project Structure
 
-
 abu-sso/
 ├── app/
 │ ├── main.py # App factory, router registration
@@ -200,6 +202,7 @@ abu-sso/
 │ ├── utils/ # security.py, jwt.py, rbac.py
 │ ├── templates/ # Jinja2 HTML (login, dashboard, admin)
 │ └── static/ # CSS + JS
+├── mock-services/ # 3 independent SSO services (Portal, LMS, Library)
 ├── tests/ # 69 pytest tests
 ├── docs/ # SRS, RTM, Design, Security, Technical Report, etc.
 ├── render.yaml # Render deployment blueprint
@@ -217,9 +220,14 @@ def hash_password(plain: str) -> str:
 def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
-
- Auth middleware (app/utils/jwt.py):
- def get_current_user(credentials = Depends(bearer_scheme), db = Depends(get_db)) -> User:
+    def get_current_user(credentials = Depends(bearer_scheme), db = Depends(get_db)) -> User:
+    user_id = decode_token(credentials.credentials) if credentials else None
+    if not user_id:
+        raise HTTPException(401, "Invalid or expired token")
+    user = get_user_by_id(db, user_id)
+    if not user or not user.is_active:
+        raise HTTPException(401, "User not found or inactive")
+def get_current_user(credentials = Depends(bearer_scheme), db = Depends(get_db)) -> User:
     user_id = decode_token(credentials.credentials) if credentials else None
     if not user_id:
         raise HTTPException(401, "Invalid or expired token")
@@ -228,15 +236,29 @@ def verify_password(plain: str, hashed: str) -> bool:
         raise HTTPException(401, "User not found or inactive")
     return user
 
- RBAC dependency factory (app/utils/rbac.py):
- def require_role(*allowed_roles: str):
-    def _checker(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.role not in allowed_roles:
-            raise HTTPException(403, f"Requires role: {' or '.join(allowed_roles)}")
-        return current_user
-    return _checker
+    
+### 3.3 Key Code Highlights
 
-  Wallet atomic payment (app/services/wallet_service.py):
+**Password hashing** (`app/utils/security.py`):
+
+```python
+def hash_password(plain: str) -> str:
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
+
+Auth middleware (app/utils/jwt.py):
+def get_current_user(credentials = Depends(bearer_scheme), db = Depends(get_db)) -> User:
+    user_id = decode_token(credentials.credentials) if credentials else None
+    if not user_id:
+        raise HTTPException(401, "Invalid or expired token")
+    user = get_user_by_id(db, user_id)
+    if not user or not user.is_active:
+        raise HTTPException(401, "User not found or inactive")
+    return user
+
+Wallet atomic payment (app/services/wallet_service.py):
 def pay(db, wallet, amount, description=None) -> Transaction:
     if amount <= 0: raise ValueError("Amount must be positive")
     if wallet.balance < amount:
@@ -254,8 +276,8 @@ Repudiation	Yes	Wallet actions	Every transaction stored with timestamp and descr
 Information Disclosure	Yes	Password / token leaks	Hashes only; HTTPS in production; JWT never logged; QR contains no PII
 Denial of Service	Partial	Public endpoints	Rate limiting planned for production (not prototype)
 Elevation of Privilege	Yes	Cross-user and cross-role access	get_current_user scopes reads to token subject; require_role blocks non-admins
-Full STRIDE analysis per component in docs/SECURITY.md.
 
+Full STRIDE analysis per component in docs/SECURITY.md.
 
 5. Risk Register
 #	Risk	P	I	Mitigation	Owner
@@ -266,8 +288,8 @@ R4	Time overrun vs. course workload	M	H	Agile increments; prototype already comp
 R5	Exam-day network failure	L	H	Local demo also works offline; screen recordings as backup	Developer
 R6	Dependency CVE disclosed	M	M	Monthly pip-audit; Dependabot enabled	Developer
 R7	Unauthorized data access via IDOR	L	H	Every wallet/ID-card read scoped to get_current_user	Developer
-(P = Probability; I = Impact)
 
+(P = Probability; I = Impact)
 
 6. Maintenance Plan
 6.1 Maintenance Categories
@@ -276,7 +298,6 @@ Corrective	20%	Fix bugs reported by users; patch dependency CVEs
 Adaptive	20%	Migrate to newer Python; add OIDC; support new browsers
 Perfective	50%	Audit log viewer, bulk user management, rate limiting, mobile UI
 Preventive	10%	Run pip-audit monthly; refactor hot paths; rotate JWT secret
-
 
 6.2 Versioning & Release Process
 Semantic versioning: MAJOR.MINOR.PATCH (e.g. 1.0.0).
@@ -291,7 +312,6 @@ bandit -r app/ clean.
 .env.example reflects any new env vars.
 SRS / RTM updated for any new FRs.
 
-
 6.3 Deprecation & Migration
 If the JWT algorithm changes (HS256 → RS256 for OIDC), a graceful migration path is: accept both for a transition window, then sunset HS256.
 
@@ -301,7 +321,6 @@ API availability	≥ 99%
 Login latency p95	≤ 500 ms
 Wallet payment failure rate	< 1%
 CI pass rate	100%
-
 
 7. Results
 Metric	Result
@@ -313,7 +332,8 @@ SAST findings	0 (Bandit)
 CI status	✅ Green
 UML diagrams	3 (use case, sequence, class)
 Roles enforced	3 (student / staff / admin)
-Documents delivered	SRS, RTM, Design, Security, User Manual, Test Results, Risk & Maintenance, Technical Report
+Distributed services	3 mock SSO services (Portal, LMS, Library)
+Documents delivered	SRS, RTM, Design, Security, User Manual, Test Results, Risk & Maintenance, Technical Report, Presentation Guide, AI Use Declaration
 
 8. Reflections and Lessons Learned
 Iteration beats planning. Wallet and admin features were added after auth was working; a strict Waterfall plan would have frozen the schema too early.
@@ -327,6 +347,8 @@ Documentation is code. The SRS forced clarifications (e.g., what "expired token"
 Security is a process, not a checkbox. Bandit found a short JWT secret during development; without SAST, that would have shipped.
 
 Cloud complexity is manageable. Deploying to two free-tier services (Render + Neon) was cheaper and more durable than a single bundled provider.
+
+Distributed proof is stronger than distributed theory. Building three real mock services was worth more for the demo than any architectural diagram.
 
 9. Future Work
 OIDC / OpenID Connect with RS256 asymmetric keys.
@@ -346,6 +368,7 @@ Native mobile app (React Native) reusing the same API.
 Offline-first QR verification for gate access.
 
 
+
 10. References
 Sommerville, I. (2016). Software Engineering (10th ed.). Pearson.
 
@@ -357,8 +380,7 @@ RFC 7519 (JWT), RFC 7518 (JWA)
 
 OWASP Top 10 — 2021
 
-
-1. Assumptions
+11. Assumptions
 The following assumptions were made in interpreting the exam problem statement (Question 7 — Unified ABU-SSO). They are stated explicitly here as required by the exam instruction D.
 
 11.1 Scope Assumptions
@@ -381,7 +403,6 @@ A9	Session expiry of 15 minutes is acceptable for the exam demo.	Balances securi
 A10	QR codes encode only {id, matric_no, role} — no PII.	Data minimisation principle (NDPR compliance).
 A11	Third-party campus services would verify JWTs using a shared secret during the prototype; production would use RS256 public-key verification.	HS256 is simpler to set up; RS256 is more secure for multi-service trust.
 A12	Network availability exists between the client browser and the deployed service.	Standard assumption for any web application.
-
 
 11.4 Business / Operational Assumptions
 #	Assumption	Justification
@@ -408,5 +429,13 @@ Render free tier cold starts — first request after 15 min idle takes 30–60 s
 11.6 Compliance Statement
 These assumptions were reviewed against the problem statement to ensure no requirement was silently dropped. All assumptions are also reflected in docs/SRS.md Section 2.6 and in the risk register (docs/RISK_AND_MAINTENANCE.md).
 
+12. AI Use Declaration
+In accordance with COEN838 exam instruction F ("Ensure responsible and ethical use of AI"), the full disclosure of AI assistance in this project is provided in a standalone document:
+
+📄 docs/AI_USE_DECLARATION.md
+
+Summary: Anthropic's Claude was used as a conversational coding tutor — assisting with environment setup, explaining error messages, suggesting patterns, and reviewing documentation structure. All engineering decisions, architectural choices, testing strategy, deployment plan, and written narrative are the candidate's own work. Every AI-suggested fix was verified by running the code and inspecting the result. No AI was used during timed assessments.
+
+##End of Technical Report.
 
 

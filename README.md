@@ -81,6 +81,7 @@ Test Results	Full test inventory, coverage report, SAST output
 User Manual	End-user + installation guide
 Risk & Maintenance	Risk register + maintenance plan (Module V)
 Presentation Guide	Slides + demo script + defence Q&A
+| [AI Use Declaration](docs/AI_USE_DECLARATION.md) | Transparent disclosure of AI-assisted learning (exam instruction F) |
 
 
 🏗️ Architecture
