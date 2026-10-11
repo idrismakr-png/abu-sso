@@ -14,7 +14,7 @@
 
 ## Abstract
 
-Nigerian university students routinely juggle multiple credentials across isolated systems (student portal, LMS, Wi-Fi, library, hostel), leading to password fatigue, forgotten logins, and shared accounts. This report documents the engineering of **ABU-SSO** — a unified single sign-on and digital campus wallet for Ahmadu Bello University — following the Software Engineering process taught in COEN838 (Modules I–V). The system is built with Python 3.12, FastAPI, SQLAlchemy, and JWT-based authentication with role-based access control. It was delivered in eleven iterative increments, is covered by **69 automated tests achieving 96% line coverage**, runs a green CI pipeline on every push, and has passed a Bandit SAST scan with zero findings. The system is deployed live on Render (web) and Neon (PostgreSQL). The report closes with a risk register, maintenance plan, and reflections on lessons learned.
+Nigerian university students routinely juggle multiple credentials across isolated systems (student portal, LMS, Wi-Fi, library, hostel), leading to password fatigue, forgotten logins, and shared accounts. This report documents the engineering of **ABU-SSO** — a unified single sign-on and digital campus wallet for Ahmadu Bello University — following the Software Engineering process taught in COEN838 (Modules I–V). The system is built with Python 3.12, FastAPI, SQLAlchemy, and JWT-based authentication with role-based access control. It was delivered in twelve iterative increments, is covered by **84 automated tests (79 fast + 5 E2E) achieving 96% line coverage**, runs a green CI pipeline on every push, has passed a Bandit SAST scan with zero findings, and is deployed live on Render (7 web services) with a Neon PostgreSQL database. The system includes six independent SSO services that trust ABU-SSO as their identity provider, demonstrating real distributed single sign-on. The report closes with a risk register, maintenance plan, and reflections.
 
 ---
 
@@ -22,13 +22,14 @@ Nigerian university students routinely juggle multiple credentials across isolat
 
 ### 1.1 Problem Statement
 
-Students at Ahmadu Bello University interact with at least five separate digital systems, each with its own credentials:
+Students at Ahmadu Bello University interact with at least six separate digital systems, each with its own credentials:
 
-1. Central student portal (course registration, results)
+1. Central student portal (course registration)
 2. Learning Management System (Moodle)
 3. Campus Wi-Fi captive portal
 4. Library borrowing system
 5. Hostel allocation and gate access
+6. Result checker
 
 Passwords are frequently forgotten, reused across systems, or shared with peers — a security and productivity problem. Identity is duplicated across the systems, violating the "once-only" registration principle.
 
@@ -39,14 +40,16 @@ Design and build a **single identity provider** for ABU campus services, with a 
 ### 1.3 Scope
 
 **In scope:**
-- Central authentication (register, login, JWT issuance).
+- Central authentication (matric-based login, JWT issuance).
 - Role-based access control (student / staff / admin).
+- **Admin-controlled account creation** (bootstrap-only first user, then admin-created accounts).
 - Digital ID card with QR code.
 - Campus wallet (top-up, payment, transaction history).
 - Web dashboard + admin panel.
+- **Six independent SSO services** — Portal, LMS, Library, Hostel, Wi-Fi, Result Checker — each deployed separately.
 - Auto-generated OpenAPI documentation.
 - Automated tests + continuous integration.
-- Cloud deployment (Render + Neon PostgreSQL).
+- Cloud deployment (Render for 7 web services + Neon PostgreSQL).
 
 **Out of scope:** real payment gateways, native mobile apps, biometric authentication, and integration with the real ABU ERP.
 
@@ -69,11 +72,11 @@ An **iterative and incremental Agile** process was used because the problem stat
 | 7 | Digital ID card + QR |
 | 8 | Campus wallet |
 | 9 | Web UI (login + dashboard) |
-| 10 | 53 automated tests + GitHub Actions CI |
-| 11 | RBAC + Admin panel + 16 more tests + cloud deployment |
-| 12 | Distributed mock SSO services (Portal, LMS, Library) |
+| 10 | 53 tests + GitHub Actions CI |
+| 11 | RBAC + Admin panel + admin create-user + cloud deployment |
+| 12 | Six distributed mock SSO services + 84 tests with E2E |
 
-**Why not Waterfall?** Wallet and admin features were added *after* the auth prototype was working — an upfront plan could not have anticipated the exact wallet schema or the need for an admin panel. Iteration allowed course correction.
+**Why not Waterfall?** Wallet, admin, and distributed SSO features were added *after* the auth prototype was working — an upfront plan could not have anticipated the exact wallet schema, the admin workflow, or the number of downstream services. Iteration allowed course correction.
 
 ### 2.2 Requirements Engineering (Module I)
 
@@ -83,7 +86,7 @@ Requirements were elicited using three techniques:
 - **Ethnography** — observing students in the Faculty of Engineering computer lab.
 - **Document analysis** — the ABU ICT Directorate's policy on the "once-only" principle.
 
-15 Functional Requirements (FR-01 to FR-15) and 12 Non-Functional Requirements (NFR-01 to NFR-12) are documented in `docs/SRS.md`. Requirements are modelled with:
+**19 Functional Requirements** (FR-01 to FR-19) and **13 Non-Functional Requirements** (NFR-01 to NFR-13) are documented in `docs/SRS.md`. Requirements are modelled with:
 
 - Use Case diagram (10 use cases)
 - Sequence diagram (login + protected resource)
@@ -93,24 +96,22 @@ A **Requirements Traceability Matrix** (`docs/RTM.md`) links every FR to its des
 
 ### 2.3 Architecture & Design (Module III)
 
-**Architectural style:** Modular monolith with a layered architecture, organised around **feature routers** rather than technical layers. This choice balances two constraints:
+**Architectural style:** A **modular monolith** (the ABU-SSO identity provider) **plus six independent microservices** that trust its JWTs.
 
-- **Student-solo build** — a microservices deployment would be overkill for one developer.
-- **Growth path to microservices** — each router (`auth`, `wallet`, `id_card`, `admin`) is already isolated behind a clear service boundary, so it can be extracted into its own service later.
+**The IdP:**
+- Layered architecture organised around **feature routers** (`auth`, `wallet`, `id_card`, `admin`, `pages`).
+- Layers: `HTTP → Router → Service → Model → Database`.
 
-**Layers:**
+**The distributed layer:**
+- Six independent FastAPI applications, each deployed as its own Render web service.
+- Each service verifies tokens by calling the IdP's `/auth/me` endpoint — no shared session, no shared database.
+- Stateless verification means any service can be scaled independently.
 
-HTTP → Router → Service → Model → Database
-(thin) (business) (ORM) (SQLite/PG)
+**Inter-component communication:** synchronous REST over HTTP with JWT in the `Authorization: Bearer` header.
 
+**Data model:** three tables — `users`, `wallets`, `transactions`. A user owns 0 or 1 wallet; a wallet owns 0..N transactions.
 
-**Inter-component communication:** synchronous REST over HTTP with JWT in the `Authorization: Bearer` header. This is the natural fit for ABU-SSO because third-party services (Portal, LMS) need an immediate auth decision on each request.
-
-**Distributed layer:** three independent mock services (Portal on port 4001, LMS on 4002, Library on 4003) each verify the JWT by calling the IdP's `/auth/me` endpoint. This demonstrates real Single Sign-On across process boundaries. See `docs/DESIGN.md` Section 8.
-
-**Data model:** three tables — `users`, `wallets`, `transactions`. A user owns 0 or 1 wallet, a wallet owns 0..N transactions. See `docs/diagrams/class_model.png`.
-
-**Scalability:** stateless JWT means the API can be horizontally scaled behind a load balancer without sticky sessions. The database is the only stateful component and can be swapped from SQLite to PostgreSQL by changing the `DATABASE_URL` environment variable — a migration we exercised in the deployment phase.
+**Scalability:** stateless JWT means the API can be horizontally scaled behind a load balancer. The database is swappable from SQLite to PostgreSQL by changing the `DATABASE_URL` environment variable — a migration we exercised in the deployment phase.
 
 ### 2.4 Security Engineering (Module IV)
 
@@ -120,47 +121,57 @@ HTTP → Router → Service → Model → Database
 
 | Principle | Where applied |
 |-----------|--------------|
-| **Least privilege** | No user can access another user's wallet or ID card — enforced by `get_current_user` dependency. Admin-only routes use `require_role("admin")`. |
-| **Defence in depth** | bcrypt (passwords) + JWT signing (sessions) + Pydantic validation (input) + ORM parameterisation (SQLi) + RBAC (authorization). |
-| **Fail securely** | Invalid/expired tokens return HTTP 401; unauthorised roles return 403; insufficient funds raise `ValueError` and roll back. |
-| **Never trust input** | Every request body is validated by Pydantic schemas before reaching business logic. |
-| **Separation of secrets** | `JWT_SECRET` lives in `.env` (gitignored), not in source code. In production, Render generates it randomly. |
-| **Cryptographic hygiene** | bcrypt with auto-generated salt; JWT secret ≥ 32 bytes (RFC 7518 compliant). |
+| **Least privilege** | No user can access another user's wallet or ID card. Admin-only routes use `require_role("admin")`. |
+| **Defence in depth** | bcrypt (passwords) + JWT signing (sessions) + Pydantic validation (input) + ORM parameterisation (SQLi) + RBAC (authorization) + bootstrap-only registration. |
+| **Fail securely** | Invalid/expired tokens return 401; unauthorised roles return 403; insufficient funds raise `ValueError` and roll back. |
+| **Never trust input** | Every request body is validated by Pydantic schemas. |
+| **Separation of secrets** | `JWT_SECRET` in `.env` (gitignored); in production, Render auto-generates. |
+| **Cryptographic hygiene** | bcrypt with auto-generated salt; JWT secret ≥ 32 bytes (RFC 7518). |
 
-**Authentication scheme:** HS256 JWT with 15-minute expiry, transmitted as a Bearer token. Tokens contain `sub` (user id), `iat`, and `exp`. Passwords are never stored, only their bcrypt hashes.
+**Authentication scheme:** HS256 JWT with 15-minute expiry. Tokens contain `sub` (user id), `iat`, and `exp`. Users log in with their **matric / staff number** — not email.
 
-**Authorization scheme:** Role-based access control (RBAC). Three roles — `student`, `staff`, `admin` — enforced by a reusable FastAPI dependency factory `require_role(*roles)`. Students attempting to reach `/admin/*` receive **HTTP 403 Forbidden**.
+**Authorization scheme:** Role-based access control. Three roles — `student`, `staff`, `admin` — enforced by a reusable FastAPI dependency factory `require_role(*roles)`.
 
-**Security testing:** Bandit SAST was run against `app/`. Result: **0 issues identified** across 525 lines of code.
+**Account provisioning policy:**
+- **First user on a fresh deployment** → automatic bootstrap as admin.
+- **All subsequent accounts** → created by an admin via `POST /admin/users`.
+- **Public `/auth/register`** → returns **HTTP 403** once any user exists.
+
+This models the real ABU workflow: students are registered by ICT after admission, not self-registered.
+
+**Security testing:** Bandit SAST ran against `app/`. Result: **0 issues identified** across 525 lines of code.
 
 ### 2.5 Testing & Quality Assurance (Module II)
 
-Testing follows a **three-layer pyramid**:
+Testing follows a **four-layer pyramid**:
 
 | Layer | Count | Tooling | What it covers |
 |-------|:-----:|---------|----------------|
 | Unit | 7 | pytest | `hash_password`, `verify_password` |
-| Service | 41 | pytest + SQLAlchemy | `user_service`, `wallet_service`, `admin_service` |
+| Service | 51 | pytest + SQLAlchemy | `user_service`, `wallet_service`, `admin_service` |
 | Integration | 21 | pytest + FastAPI TestClient | All public HTTP routes |
-| **Total** | **69** | | |
+| System (E2E) | 5 | pytest + Playwright | Browser-driven user journeys |
+| **Total** | **84** | | |
 
 **Coverage:** **96%** of the `app/` package (473 statements, 19 missed).
 
 **Static analysis:** Bandit 1.9.4 → 0 findings.
 
-**Continuous Integration:** `.github/workflows/ci.yml` runs the full test suite on every push to `main`. Average CI runtime: **24 seconds**. Status: **green ✅**.
+**Continuous Integration:** `.github/workflows/ci.yml` runs the fast suite on every push, then the E2E suite.
 
 Full details in `docs/TEST_RESULTS.md`.
 
 ### 2.6 Deployment
 
-The system is deployed on free-tier cloud services:
+Deployed on free-tier cloud services:
 
-- **Web service:** Render (Python 3.12, Uvicorn, auto-deploy on push to `main`).
+- **IdP:** Render web service (Python 3.12, Uvicorn, auto-deploy on push to `main`).
+- **Six SSO services:** Render web services — `abu-sso-portal`, `abu-sso-lms`, `abu-sso-library`, `abu-sso-hostel`, `abu-sso-wifi`, `abu-sso-results`.
 - **Database:** Neon (managed PostgreSQL 18, no expiry).
-- **Configuration:** `render.yaml` blueprint file declares the web service; `DATABASE_URL` is set as an environment variable pointing to Neon.
+- **Configuration:** `render.yaml` declares all seven services; `DATABASE_URL` is set as an environment variable pointing to Neon.
 
-**Live URL:** https://abu-sso.onrender.com
+**Live URL:** https://abu-sso.onrender.com  
+**SSO services:** https://abu-sso-portal.onrender.com, https://abu-sso-lms.onrender.com, etc.
 
 ### 2.7 Project Management & Maintenance (Module V)
 
@@ -183,10 +194,10 @@ See Sections 5, 6, and `docs/RISK_AND_MAINTENANCE.md`.
 | Authentication | JWT (PyJWT) + bcrypt |
 | Authorization | RBAC middleware (`require_role`) |
 | QR codes | qrcode + Pillow |
-| Testing | pytest + httpx |
+| Testing | pytest + httpx + Playwright |
 | CI | GitHub Actions |
 | SAST | Bandit |
-| Hosting | Render + Neon |
+| Hosting | Render (7 services) + Neon |
 
 ### 3.2 Project Structure
 
@@ -197,15 +208,21 @@ abu-sso/
 │ ├── database.py # SQLAlchemy engine + session
 │ ├── models/ # ORM: User, Wallet, Transaction
 │ ├── schemas/ # Pydantic request/response schemas
-│ ├── routers/ # HTTP endpoints (auth, wallet, id_card, admin, health, pages)
+│ ├── routers/ # auth, wallet, id_card, admin, health, pages
 │ ├── services/ # Business logic
 │ ├── utils/ # security.py, jwt.py, rbac.py
 │ ├── templates/ # Jinja2 HTML (login, dashboard, admin)
 │ └── static/ # CSS + JS
-├── mock-services/ # 3 independent SSO services (Portal, LMS, Library)
-├── tests/ # 69 pytest tests
-├── docs/ # SRS, RTM, Design, Security, Technical Report, etc.
-├── render.yaml # Render deployment blueprint
+├── mock-services/ # 6 independent SSO services
+│ ├── portal/ # Student Portal (port 4001)
+│ ├── lms/ # LMS (port 4002)
+│ ├── library/ # Library (port 4003)
+│ ├── hostel/ # Hostel (port 4004)
+│ ├── wifi/ # Wi-Fi (port 4005)
+│ └── results/ # Result Checker (port 4006)
+├── tests/ # 84 pytest tests
+├── docs/ # SRS, RTM, Design, Security, etc.
+├── render.yaml # Blueprint for 7 Render services
 └── .github/workflows/ci.yml # CI pipeline
 
 
@@ -220,6 +237,16 @@ def hash_password(plain: str) -> str:
 def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
+   Bootstrap-only registration (app/routers/auth.py):
+    @router.post("/register", response_model=UserRead, status_code=201)
+def register(payload: UserCreate, db: Session = Depends(get_db)):
+    if db.query(User).count() == 0:
+        return create_user(db, ..., role="admin")  # bootstrap
+    if settings.allow_public_registration:
+        return create_user(db, ..., role=payload.role)
+    raise HTTPException(403, "Public registration is disabled.")
+
+    Auth middleware (app/utils/jwt.py):
     def get_current_user(credentials = Depends(bearer_scheme), db = Depends(get_db)) -> User:
     user_id = decode_token(credentials.credentials) if credentials else None
     if not user_id:
@@ -227,93 +254,67 @@ def verify_password(plain: str, hashed: str) -> bool:
     user = get_user_by_id(db, user_id)
     if not user or not user.is_active:
         raise HTTPException(401, "User not found or inactive")
-def get_current_user(credentials = Depends(bearer_scheme), db = Depends(get_db)) -> User:
-    user_id = decode_token(credentials.credentials) if credentials else None
-    if not user_id:
-        raise HTTPException(401, "Invalid or expired token")
-    user = get_user_by_id(db, user_id)
-    if not user or not user.is_active:
-        raise HTTPException(401, "User not found or inactive")
     return user
 
-    
-### 3.3 Key Code Highlights
+    RBAC dependency factory (app/utils/rbac.py):
+    def require_role(*allowed_roles: str):
+    def _checker(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(403, f"Requires role: {' or '.join(allowed_roles)}")
+        return current_user
+    return _checker
 
-**Password hashing** (`app/utils/security.py`):
-
-```python
-def hash_password(plain: str) -> str:
-    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
-
-def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
-
-Auth middleware (app/utils/jwt.py):
-def get_current_user(credentials = Depends(bearer_scheme), db = Depends(get_db)) -> User:
-    user_id = decode_token(credentials.credentials) if credentials else None
-    if not user_id:
+    Distributed SSO verification (mock-services/portal/main.py):
+    async def verify_token_with_idp(token: str) -> dict:
+    async with httpx.AsyncClient() as client:
+        res = await client.get(
+            f"{IDP_URL}/auth/me",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=5.0,
+        )
+    if res.status_code != 200:
         raise HTTPException(401, "Invalid or expired token")
-    user = get_user_by_id(db, user_id)
-    if not user or not user.is_active:
-        raise HTTPException(401, "User not found or inactive")
-    return user
+    return res.json()
 
-Wallet atomic payment (app/services/wallet_service.py):
-def pay(db, wallet, amount, description=None) -> Transaction:
-    if amount <= 0: raise ValueError("Amount must be positive")
-    if wallet.balance < amount:
-        raise ValueError(f"Insufficient funds: balance is {wallet.balance}")
-    wallet.balance -= amount
-    txn = Transaction(wallet_id=wallet.id, amount=amount, type="debit", ...)
-    db.add(txn); db.commit()
-    return txn
+    4. STRIDE Threat Model
+    Threat	Applies?	Where	Mitigation
+Spoofing	Yes	Login endpoint	bcrypt password verification; matric lookup
+Tampering	Yes	Request bodies	Pydantic validation; ORM parameterisation
+Repudiation	Yes	Wallet actions	Every transaction stored with timestamp
+Information Disclosure	Yes	Password / token leaks	Hashes only; HTTPS; JWT never logged; QR contains no PII
+Denial of Service	Partial	Public endpoints	Rate limiting planned (residual risk)
+Elevation of Privilege	Yes	Cross-user and cross-role access	get_current_user scopes reads; require_role blocks non-admins; bootstrap-only registration prevents privilege self-assignment
 
-4. STRIDE Threat Model
-Threat	Applies?	Where	Mitigation
-Spoofing	Yes	Login endpoint	bcrypt password verification; credentials must match
-Tampering	Yes	Request bodies	Pydantic validation; ORM parameterisation prevents SQL injection
-Repudiation	Yes	Wallet actions	Every transaction stored with timestamp and description
-Information Disclosure	Yes	Password / token leaks	Hashes only; HTTPS in production; JWT never logged; QR contains no PII
-Denial of Service	Partial	Public endpoints	Rate limiting planned for production (not prototype)
-Elevation of Privilege	Yes	Cross-user and cross-role access	get_current_user scopes reads to token subject; require_role blocks non-admins
-
-Full STRIDE analysis per component in docs/SECURITY.md.
+Full STRIDE analysis in docs/SECURITY.md.
 
 5. Risk Register
-#	Risk	P	I	Mitigation	Owner
-R1	JWT secret leaked via Git history	M	H	Store in .env, gitignored; rotate on deploy; ≥ 32-byte key	Developer
-R2	Weak user passwords	H	M	Enforce minimum length via Pydantic; recommend password manager	Developer
-R3	SQLite concurrency at scale	M	M	Documented PostgreSQL migration path (env var change only)	Developer
-R4	Time overrun vs. course workload	M	H	Agile increments; prototype already complete	Developer
-R5	Exam-day network failure	L	H	Local demo also works offline; screen recordings as backup	Developer
-R6	Dependency CVE disclosed	M	M	Monthly pip-audit; Dependabot enabled	Developer
-R7	Unauthorized data access via IDOR	L	H	Every wallet/ID-card read scoped to get_current_user	Developer
-
-(P = Probability; I = Impact)
+#	Risk	P	I	Mitigation
+R1	JWT secret leaked via Git history	M	H	.env gitignored; Render generates; ≥32-byte key; rotated after chat exposure
+R2	Weak user passwords	H	M	Pydantic min-length; admin-set initial passwords
+R3	SQLite concurrency at scale	M	M	Documented PostgreSQL migration path
+R4	Time overrun vs. course workload	M	H	Agile increments
+R5	Exam-day network failure	L	H	Local demo also works; screen recording backup
+R6	Dependency CVE	M	M	Monthly pip-audit; Dependabot
+R7	Unauthorized data access via IDOR	L	H	All reads scoped to get_current_user
+R8	Render free-tier cold start	H	L	First request takes 30–60 s; documented in README
 
 6. Maintenance Plan
 6.1 Maintenance Categories
-Category	% effort	Examples for ABU-SSO
+Category	% effort	Examples
 Corrective	20%	Fix bugs reported by users; patch dependency CVEs
 Adaptive	20%	Migrate to newer Python; add OIDC; support new browsers
 Perfective	50%	Audit log viewer, bulk user management, rate limiting, mobile UI
-Preventive	10%	Run pip-audit monthly; refactor hot paths; rotate JWT secret
+Preventive	10%	Monthly pip-audit; refactor hot paths; rotate JWT secret
 
 6.2 Versioning & Release Process
-Semantic versioning: MAJOR.MINOR.PATCH (e.g. 1.0.0).
+Semantic versioning: MAJOR.MINOR.PATCH.
 
 Conventional Commits: feat:, fix:, docs:, test:, chore:, ci:.
 
-Release checklist:
-
-All tests pass locally + CI.
-Coverage ≥ 70%.
-bandit -r app/ clean.
-.env.example reflects any new env vars.
-SRS / RTM updated for any new FRs.
+Release checklist: all tests pass locally + CI; coverage ≥ 70%; bandit -r app/ clean; .env.example current; SRS/RTM updated.
 
 6.3 Deprecation & Migration
-If the JWT algorithm changes (HS256 → RS256 for OIDC), a graceful migration path is: accept both for a transition window, then sunset HS256.
+If the JWT algorithm changes (HS256 → RS256 for OIDC), accept both during a transition window, then sunset HS256.
 
 6.4 Metrics to Monitor in Production
 Metric	Target
@@ -325,30 +326,30 @@ CI pass rate	100%
 7. Results
 Metric	Result
 Working prototype	✅ Deployed at https://abu-sso.onrender.com
-Functional Requirements implemented	15 / 15
-Automated tests	69 / 69 passing
+Functional Requirements implemented	19 / 19
+Distributed SSO services	6 (Portal, LMS, Library, Hostel, Wi-Fi, Results)
+Automated tests	84 / 84 passing (79 fast + 5 E2E)
 Line coverage	96%
 SAST findings	0 (Bandit)
 CI status	✅ Green
 UML diagrams	3 (use case, sequence, class)
 Roles enforced	3 (student / staff / admin)
-Distributed services	3 mock SSO services (Portal, LMS, Library)
 Documents delivered	SRS, RTM, Design, Security, User Manual, Test Results, Risk & Maintenance, Technical Report, Presentation Guide, AI Use Declaration
 
 8. Reflections and Lessons Learned
-Iteration beats planning. Wallet and admin features were added after auth was working; a strict Waterfall plan would have frozen the schema too early.
+Iteration beats planning. Wallet, admin, and distributed features were added after auth was working; a strict Waterfall plan would have frozen the schema too early.
 
-Tests pay for themselves. Two bugs were caught by tests during the auth increment that would have been missed by manual testing.
+Tests pay for themselves. Bugs were caught by tests during each increment that manual testing missed.
 
-Automate the boring stuff early. Setting up GitHub Actions in the first week saved hours of manual test runs.
+Automate early. GitHub Actions from week 1 saved hours of manual test runs.
 
-Documentation is code. The SRS forced clarifications (e.g., what "expired token" means) that improved the actual implementation.
+Documentation is code. The SRS forced clarifications that improved the actual implementation.
 
-Security is a process, not a checkbox. Bandit found a short JWT secret during development; without SAST, that would have shipped.
+Security is a process. Bandit found a short JWT secret during development; without SAST, that would have shipped. The bootstrap-only registration pattern closed a later-discovered self-registration vulnerability.
 
-Cloud complexity is manageable. Deploying to two free-tier services (Render + Neon) was cheaper and more durable than a single bundled provider.
+Cloud complexity is manageable. Deploying to two free-tier providers (Render + Neon) was cheaper and more durable than a bundled provider.
 
-Distributed proof is stronger than distributed theory. Building three real mock services was worth more for the demo than any architectural diagram.
+Distributed proof is stronger than distributed theory. Building six real mock services was worth more for the demo than any architectural diagram.
 
 9. Future Work
 OIDC / OpenID Connect with RS256 asymmetric keys.
@@ -363,11 +364,9 @@ Email verification + OTP password reset.
 
 Real payment gateway integration.
 
-Native mobile app (React Native) reusing the same API.
+Native mobile app reusing the same API.
 
 Offline-first QR verification for gate access.
-
-
 
 10. References
 Sommerville, I. (2016). Software Engineering (10th ed.). Pearson.
@@ -381,61 +380,57 @@ RFC 7519 (JWT), RFC 7518 (JWA)
 OWASP Top 10 — 2021
 
 11. Assumptions
-The following assumptions were made in interpreting the exam problem statement (Question 7 — Unified ABU-SSO). They are stated explicitly here as required by the exam instruction D.
+The following assumptions were made in interpreting the exam problem statement (Question 7 — Unified ABU-SSO), as required by exam instruction D.
 
 11.1 Scope Assumptions
 #	Assumption	Justification
-A1	The system is a prototype demonstrating the SSO concept, not a full ABU ICT production rollout.	Course timescale and access to real ABU infrastructure are limited.
-A2	Integration with the real ABU student portal and Moodle is out of scope; the connected services are shown as mock cards on the dashboard.	Real integration requires vendor cooperation (Moodle plugin development) and ABU ICT approval.
-A3	Wallet top-ups are simulated; no real payment gateway is integrated.	PCI-DSS compliance and payment provider onboarding are beyond the course scope.
+A1	The system is a prototype, not a full ABU ICT production rollout.	Course timescale and access to real ABU infrastructure.
+A2	Integration with the real ABU portal and Moodle is out of scope; six mock services are used instead.	Real integration requires vendor cooperation and ABU ICT approval.
+A3	Wallet top-ups are simulated; no real payment gateway.	PCI-DSS and provider onboarding are beyond course scope.
 
 11.2 User Assumptions
 #	Assumption	Justification
-A4	All users have a valid @abu.edu.ng email address.	Mirrors how ABU issues student/staff accounts.
-A5	Users can access a modern web browser.	Consistent with the "web-based interface" requirement in the SRS.
-A6	Administrators are trusted ABU ICT staff.	Standard assumption for university-level RBAC.
+A4	Every student has a matric number; every staff member has a staff number.	Issued by ABU at admission/employment.
+A5	Users access a modern web browser.	Standard for web applications.
+A6	Administrators are trusted ABU ICT staff.	Standard assumption for RBAC.
+A7	Students do not self-register — accounts are created by ICT after admission.	Realistic ABU workflow; enforced via bootstrap-only registration.
 
 11.3 Technical Assumptions
 #	Assumption	Justification
-A7	SQLite is sufficient for development and demo; PostgreSQL is used in production.	SQLite avoids setup friction; PostgreSQL matches cloud hosting reality.
-A8	The JWT secret is delivered via environment variable in production.	Standard cloud security practice; .env file is gitignored.
-A9	Session expiry of 15 minutes is acceptable for the exam demo.	Balances security with usability. Refresh tokens are future work.
-A10	QR codes encode only {id, matric_no, role} — no PII.	Data minimisation principle (NDPR compliance).
-A11	Third-party campus services would verify JWTs using a shared secret during the prototype; production would use RS256 public-key verification.	HS256 is simpler to set up; RS256 is more secure for multi-service trust.
-A12	Network availability exists between the client browser and the deployed service.	Standard assumption for any web application.
+A8	SQLite is sufficient for dev/demo; PostgreSQL for production.	SQLite avoids setup friction; PostgreSQL matches cloud reality.
+A9	JWT secret is delivered via environment variable.	Standard cloud security practice.
+A10	15-minute session expiry is acceptable for the demo.	Refresh tokens are future work.
+A11	QR codes encode only {id, matric_no, role} — no PII.	Data minimisation (NDPR).
+A12	Mock services verify tokens via the IdP's /auth/me, not locally with the secret.	Simpler, safer, models OIDC UserInfo.
+A13	Network availability exists between browser and cloud.	Standard web assumption.
 
 11.4 Business / Operational Assumptions
 #	Assumption	Justification
-A13	Wallet balances represent campus currency (₦) for services such as library fines and hostel fees.	Matches the problem statement's "digital campus wallet" scope.
-A14	A single ABU-SSO instance serves the entire university; horizontal scaling is possible but not exercised.	Prototype scale; scaling is documented in docs/DESIGN.md.
-A15	The system is not subject to NDPR audit for the prototype phase, but is designed with NDPR principles in mind.	No real student PII is stored beyond test data.
-
+A14	Wallet balances represent campus currency (₦).	Matches "digital campus wallet" scope.
+A15	Horizontal scaling is documented but not exercised.	Prototype scale.
+A16	NDPR audit is not required for the prototype.	No real student PII stored.
 
 11.5 Limitations Explicitly Acknowledged
-The following limitations are declared rather than assumed away:
+No rate limiting on /auth/login — planned via slowapi.
 
-No rate limiting on /auth/login — mitigated in the risk register, planned for the next release.
+No refresh tokens — 15-minute re-login required.
 
-No refresh tokens — users must re-login every 15 minutes.
+No email verification — moot, since email isn't used for authentication.
 
-No email verification — anyone with an email can register; ABU email domain check is planned.
+No audit log table yet — admin actions not persisted to dedicated trail.
 
-No audit log table yet — while admin endpoints exist, actions are not persisted to a dedicated audit trail.
+Mock services are demonstrations — real services would call the same JWT-protected API.
 
-Mock third-party services — the four service cards on the dashboard are placeholders; real services would call the JWT-protected API.
+Render free-tier cold starts — first request after idle takes 30–60 s.
 
-Render free tier cold starts — first request after 15 min idle takes 30–60 seconds.
+Registration is bootstrap-only — matches ABU reality, but means admin access is required to onboard new users.
 
 11.6 Compliance Statement
-These assumptions were reviewed against the problem statement to ensure no requirement was silently dropped. All assumptions are also reflected in docs/SRS.md Section 2.6 and in the risk register (docs/RISK_AND_MAINTENANCE.md).
+These assumptions were reviewed against the problem statement to ensure no requirement was silently dropped. All assumptions are also reflected in docs/SRS.md §2.6 and in the risk register.
 
 12. AI Use Declaration
 In accordance with COEN838 exam instruction F ("Ensure responsible and ethical use of AI"), the full disclosure of AI assistance in this project is provided in a standalone document:
-
 📄 docs/AI_USE_DECLARATION.md
 
-Summary: Anthropic's Claude was used as a conversational coding tutor — assisting with environment setup, explaining error messages, suggesting patterns, and reviewing documentation structure. All engineering decisions, architectural choices, testing strategy, deployment plan, and written narrative are the candidate's own work. Every AI-suggested fix was verified by running the code and inspecting the result. No AI was used during timed assessments.
-
-##End of Technical Report.
-
+Summary: Anthropic's Claude was used as a conversational coding tutor — assisting with environment setup, explaining error messages, suggesting patterns, and reviewing documentation structure. All engineering decisions, architectural choices, testing strategy, deployment plan, and written narrative are the candidate's own work. Every AI-suggested fix was verified by running the code and inspecting the result.
 

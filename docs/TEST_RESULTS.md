@@ -12,8 +12,10 @@
 
 | Metric | Value |
 |--------|-------|
-| Total tests | **74** |
-| Tests passing | **74 (100%)** |
+| Total tests | **84** |
+| Tests passing | **84 (100%)** |
+| Fast tests (unit + service + integration) | 79 |
+| System (E2E) tests | 5 |
 | Line coverage | **96%** (473 statements, 19 missed) |
 | SAST findings (Bandit) | **0** |
 | CI status | ✅ Green |
@@ -28,24 +30,23 @@ ABU-SSO uses a **four-layer testing pyramid**, complemented by static analysis a
 | Layer | Test Count | Scope | Tooling |
 |-------|:----------:|-------|---------|
 | **Unit** | 7 | Pure functions (`hash_password`, `verify_password`) | pytest |
-| **Service** | 41 | Business logic (`user_service`, `wallet_service`, `admin_service`) | pytest + SQLAlchemy |
+| **Service** | 51 | Business logic (`user_service`, `wallet_service`, `admin_service`) | pytest + SQLAlchemy |
 | **Integration** | 21 | HTTP endpoints via FastAPI TestClient | pytest + httpx |
 | **System (E2E)** | 5 | Full browser-driven user flows | pytest + Playwright + Chromium |
 
-**Test isolation:** every test runs against a temporary SQLite database created by `tests/conftest.py` (and `tests/e2e/conftest.py` for E2E). The production `DATABASE_URL` is overridden during the test session, and tables are wiped between tests — so tests are independent and never touch real data.
+**Test isolation:** every test runs against a shared **in-memory SQLite** database held open by `StaticPool`. All SQLAlchemy sessions (whether created via `app.database.SessionLocal` or the FastAPI `get_db` dependency) connect to the **same in-memory database** — guaranteeing no cross-session drift. Tables are created once at import time and rows are wiped between tests via an autouse fixture.
 
-**E2E isolation:** the E2E layer spins up a **separate uvicorn process on port 8001** with its own temp database, then launches headless Chromium via Playwright. Real HTTP requests, real rendering, real JavaScript. Your local `abu-sso.db` and running dev server are untouched.
+**Why StaticPool?** A naive test setup with two separate engines silently produced "no such table: users" errors because in-memory SQLite creates a *new* database per connection. `StaticPool` keeps one connection alive for the lifetime of the engine, giving every session the same DB. This was a real bug we found and fixed (see commit `924b6e1`).
 
-**Red–Green–Refactor influence:** although the full TDD cycle was not followed for every line, tests were written for each business rule *before* the UI was built, and existing tests caught two bugs during development.
+**E2E isolation:** the E2E layer spawns a **separate uvicorn subprocess on port 8001** with its own temp SQLite file, then drives it with **headless Chromium** via Playwright. Your local dev server (`:8000`) and `abu_sso.db` are untouched.
 
 ---
 
 ## 3. Coverage Report
-
 Name Stmts Miss Cover Missing
 
 app_init_.py 0 0 100%
-app\config.py 11 0 100%
+app\config.py 14 0 100%
 app\database.py 19 6 68% 14, 16, 39-43
 app\main.py 19 0 100%
 app\models_init_.py 3 0 100%
@@ -53,7 +54,7 @@ app\models\user.py 18 1 94% 26
 app\models\wallet.py 27 2 93% 30, 46
 app\routers_init_.py 0 0 100%
 app\routers\admin.py 33 2 94% 51-52
-app\routers\auth.py 24 0 100%
+app\routers\auth.py 34 0 100%
 app\routers\health.py 5 0 100%
 app\routers\id_card.py 11 0 100%
 app\routers\pages.py 13 2 85% 15, 20, 25
@@ -78,7 +79,7 @@ TOTAL 473 19 96%
 **Target:** ≥ 70% line coverage (rubric requirement).  
 **Achieved:** **96%** — exceeds target by 26 percentage points.
 
-**Why some lines are uncovered:** the remaining uncovered lines are defensive exception paths (e.g., SQLite file cleanup on session teardown) that are difficult to exercise without environment manipulation. This is acceptable residual coverage.
+**Why some lines are uncovered:** the remaining uncovered lines are defensive exception paths (e.g., SQLite file cleanup on session teardown, or environment-specific branches) that are difficult to exercise without environment manipulation. This is acceptable residual coverage.
 
 **Note on system tests:** the E2E tests are marked with `@pytest.mark.e2e` and are **excluded from the default `pytest` run** for speed. They run explicitly with `pytest tests/e2e -m e2e` locally and are executed in a separate CI job on every push.
 
@@ -100,15 +101,15 @@ TOTAL 473 19 96%
 
 ### 4.2 Service Tests
 
-**`tests/test_user_service.py` (13 tests)** — CRUD operations, email normalisation, duplicate detection, password hashing, lookups by email/id/matric, authentication success/failure/inactive-user rejection.
+**`tests/test_user_service.py` (16 tests)** — CRUD operations, email normalisation, matric uppercasing, duplicate email, duplicate matric, password hashing, lookups by email / id / matric, case-insensitive matric, authentication success / failure / inactive-user rejection.
 
 **`tests/test_wallet_service.py` (12 tests)** — Wallet auto-creation, idempotency, top-up, pay, insufficient funds, zero/negative amounts, transaction list ordering.
 
-**`tests/test_admin.py` (16 tests)** — RBAC enforcement, user listing, role changes, activate/deactivate, deactivated user login rejection, admin top-up, stats aggregation, error handling.
+**`tests/test_admin.py` (23 tests)** — RBAC enforcement (401 without token, 403 for students), user listing, admin create-user (success, duplicate email, duplicate matric, non-admin blocked), role changes, activate/deactivate, deactivated user cannot log in, admin top-up, stats aggregation, service-level error paths.
 
 ### 4.3 Integration Tests — `tests/test_api_integration.py` (21 tests)
 
-Full HTTP flows: register, duplicate rejection, invalid input, login, missing/bad token, `/auth/me`, ID card generation, wallet top-up/pay, transaction listing, health check, root endpoint.
+Full HTTP flows: register with matric, duplicate rejection, invalid input, matric login (correct, wrong, unknown, lowercase matric), missing/bad token, `/auth/me`, ID card generation, wallet top-up / pay / insufficient-funds / negative-amount, transaction listing, health check, root endpoint.
 
 ### 4.4 System (E2E) Tests — `tests/e2e/test_e2e.py` (5 tests)
 
@@ -116,7 +117,7 @@ Browser-driven tests that spin up a real server on port 8001 with a temporary da
 
 | Test | What it verifies |
 |------|------------------|
-| `test_login_page_renders` | The `/login` page loads with email + password fields |
+| `test_login_page_renders` | The `/login` page loads with matric + password fields |
 | `test_login_success_redirects_to_dashboard` | Full authentication flow through the UI |
 | `test_dashboard_shows_user_data_and_qr` | Profile, wallet, and QR code render correctly |
 | `test_logout_redirects_to_login` | Session clearing + client-side guard |
@@ -129,8 +130,6 @@ Browser-driven tests that spin up a real server on port 8001 with a temporary da
 **Tool:** Bandit 1.9.4  
 **Command:** `bandit -r app/`  
 **Result:**
-
-
 Test results:
 No issues identified.
 
@@ -142,7 +141,6 @@ Total issues (by severity):
 High: 0
 Medium: 0
 Low: 0
-
 
 **Interpretation:** no common Python vulnerabilities (hardcoded credentials, unsafe `eval`, weak cryptography, shell injection, etc.) were detected.
 
@@ -157,7 +155,7 @@ Low: 0
 1. Checkout code
 2. Set up Python 3.12
 3. Install dependencies from `requirements.txt`
-4. Run `pytest -v` — the 69 fast tests must pass
+4. Run `pytest -v` — the 79 fast tests must pass
 
 **Job 2 — `e2e`** (runs only if Job 1 passes):
 1. Checkout code + install dependencies
@@ -173,15 +171,15 @@ The CI badge in the README shows current status. A failing test blocks merge.
 
 ## 7. How to Reproduce These Results
 
-```bash
+
 # Activate environment
 conda activate abu-sso
 
 # Run fast tests (unit + service + integration)
-pytest -v
+pytest -q
 
 # Run E2E system tests
-pytest tests/e2e -m e2e -v
+pytest tests/e2e -m e2e
 
 # Run coverage on fast tests
 pytest --cov=app --cov-report=term-missing
@@ -193,8 +191,7 @@ pytest --cov=app --cov-report=html
 # Run SAST
 pip install bandit
 bandit -r app/
-
-Expected outcome: 69 tests pass (fast) + 5 E2E tests pass, coverage ≥ 90%, Bandit reports 0 findings.
+Expected outcome: 79 fast tests + 5 E2E tests pass, coverage ≥ 90%, Bandit reports 0 findings.
 
 8. Traceability
 Every Functional Requirement (FR) is traced to at least one test. See docs/RTM.md for the full Requirements Traceability Matrix.
@@ -202,12 +199,13 @@ Every Functional Requirement (FR) is traced to at least one test. See docs/RTM.m
 Coverage summary:
 
 Category	FRs covered	%
-Authentication & registration	FR-01, FR-02, FR-03, FR-04, FR-05, FR-06	100%
+Authentication & registration (bootstrap)	FR-01 to FR-06	100%
 ID card	FR-07	100%
-Wallet	FR-08, FR-09, FR-10, FR-11, FR-12	100%
-Roles & RBAC	FR-13	100%
-Platform (health, UI)	FR-14 (automated), FR-15 (E2E)	100%
-
+Wallet	FR-08 to FR-12	100%
+Roles & RBAC	FR-13, FR-18, FR-19	100%
+Platform (health, UI)	FR-14, FR-15	100%
+Admin create-user	FR-16	100%
+Distributed SSO services	FR-17	100% (manual + service-level)
 9. Quality Metrics — Dashboard
 Metric	Value	Target	Status
 Test pass rate	100%	100%	✅
@@ -216,4 +214,9 @@ SAST findings	0	0	✅
 CI pass rate	100%	100%	✅
 Tests per requirement	≥ 1	≥ 1	✅
 Test layers	4 (unit + service + integration + system)	≥ 3	✅
+10. Bugs Found and Fixed During Testing
+Test-driven development wasn't followed literally, but tests still caught real bugs. Two examples:
 
+"no such table: users" in integration tests — caused by two separate SQLAlchemy engines pointing at different in-memory SQLite databases. Fixed by switching to a single engine with StaticPool (commit 924b6e1).
+
+JWT secret too short — the placeholder change-me-in-production (23 bytes) triggered InsecureKeyLengthWarning. Fixed by extending the default and reading it from .env (RFC 7518 compliance).

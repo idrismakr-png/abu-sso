@@ -1,247 +1,408 @@
-# Presentation Guide
+# Design Document
 ## ABU-SSO: Unified Single Sign-On & Digital Campus Wallet
 
 **Course:** COEN838 — Advanced Software Engineering  
 **Student:** Idris Muhammad Abubakar  
 **Matric No:** P25EGCP9003  
-**Presentation duration:** ~12–15 minutes + Q&A
 
 ---
 
-## Part 1 — Slide Deck Outline (20 slides)
+## 1. Architectural Overview
 
-### Slide 1 — Title
-- **ABU-SSO**: Unified Single Sign-On & Digital Campus Wallet
-- Idris Muhammad Abubakar | P25EGCP9003
-- COEN838 — Advanced Software Engineering
-- GitHub: `github.com/idrismakr-png/abu-sso`
+### 1.1 Architectural Style
 
-### Slide 2 — The Problem
-- Students juggle **5 credentials** (Portal, LMS, Wi-Fi, Library, Hostel)
-- Passwords forgotten, reused, or shared
-- IT support flooded with reset requests
-- **Nigeria-specific:** fragmented identity = security & productivity loss
+ABU-SSO is a **modular monolith** (the Identity Provider) **plus six independent microservices** that trust its JWTs.
 
-### Slide 3 — The Goal
-- One login → all campus services
-- Digital ID card with QR
-- Wallet for cashless campus payments
-- Open API for any ABU service
+**Why modular monolith for the IdP (and not microservices from day one)?**
 
-### Slide 4 — Scope
-**In scope:** auth, JWT, wallet, ID card, dashboard, OpenAPI, tests, CI  
-**Out of scope:** real ERP integration, mobile apps, biometrics, real payments
+| Consideration | Modular Monolith | Microservices |
+|---------------|:----------------:|:-------------:|
+| Team size | ✅ 1 developer | ❌ Needs 3+ teams |
+| Deployment complexity | ✅ Single process | ❌ Container orchestration |
+| Learning curve | ✅ Simple | ❌ High |
+| Growth path | ✅ Extractable | ✅ Native |
+| Consistency | ✅ Single transaction | ❌ Saga needed |
 
-### Slide 5 — Requirements Engineering (Module I)
-- 15 Functional Requirements (FR-01 – FR-15)
-- 12 Non-Functional Requirements (NFR-01 – NFR-12)
-- Elicitation: interviews + ethnography + document analysis
-- UML: Use Case, Sequence, Class
-- **RTM** links every FR → design → code → test
+The IdP is built by one developer, so a monolith with clear feature boundaries is the right trade-off. However, the service boundaries are **already drawn** — each router (`auth`, `wallet`, `id_card`, `admin`) could be extracted into its own service without rewriting business logic.
 
-### Slide 6 — Architecture (Module III)
-- **Modular monolith**, layered
-- Feature routers: `auth`, `wallet`, `id_card`, `health`, `pages`
-- HTTP → Router → Service → Model → DB
-- Justification: single developer, clear growth path to microservices
+**The distributed layer was subsequently added**: six independent mock services (Portal, LMS, Library, Hostel, Wi-Fi, Result Checker) demonstrate real SSO across process boundaries. See Section 8.
 
-### Slide 7 — Data Model
-- 3 tables: `users`, `wallets`, `transactions`
-- UUID primary keys (works on SQLite + PostgreSQL)
-- `Numeric(10,2)` for money (no float errors)
-- Cascade delete (wallet → transactions)
+### 1.2 Layer Responsibilities (IdP)
 
-### Slide 8 — Security (Module IV)
-- **STRIDE** threat model applied
-- bcrypt password hashing (cost ≥ 12)
-- JWT with 15-min expiry, HS256, ≥32-byte secret
-- Least privilege, defence in depth, fail securely
-- **Bandit SAST: 0 findings** across 525 lines
+┌─────────────────────────────────────────┐
+│ Presentation │ Jinja2 HTML + CSS + JS
+│ (app/templates, app/static) │
+├─────────────────────────────────────────┤
+│ HTTP / Routers │ FastAPI route handlers
+│ (app/routers/.py) │ (thin — no business logic)
+├─────────────────────────────────────────┤
+│ Services │ Business rules
+│ (app/services/.py) │ (no HTTP, no DB session creation)
+├─────────────────────────────────────────┤
+│ Models & Schemas │ SQLAlchemy ORM + Pydantic
+│ (app/models, app/schemas) │
+├─────────────────────────────────────────┤
+│ Persistence │ SQLite (dev) / PostgreSQL (prod)
+│ (app/database.py) │
+└─────────────────────────────────────────┘
 
-### Slide 9 — Authentication Flow
-- Register → bcrypt hash → DB
-- Login → verify → JWT issued
-- Protected request → Bearer token → `get_current_user` dependency
-- Stateless → horizontally scalable
 
-### Slide 10 — Testing (Module II)
-- **53 automated tests** (7 unit + 25 service + 21 integration)
-- **96% line coverage**
-- pytest + httpx + FastAPI TestClient
-- Fixtures give each test a clean temp DB
+**Rule enforced:** each layer only talks to the one directly below it. Routers never touch the database directly — they call services.
 
-### Slide 11 — Continuous Integration
-- GitHub Actions on every push to `main`
-- Runs full suite in ~34 seconds
-- Fails fast — broken code cannot merge
+### 1.3 Inter-Component Communication
 
-### Slide 12 — Live Demo Preview
-Screenshot flow:
-1. Login page
-2. Dashboard
-3. QR ID card
-4. Wallet balance + transactions
-5. Swagger UI
+- **Client → IdP:** HTTP/1.1 with JSON bodies (or HTML for pages).
+- **IdP → Third-party services:** JWT forwarded in `Authorization: Bearer`.
+- **Service → IdP (token verification):** synchronous REST call to `/auth/me`.
+- **Style chosen:** synchronous request-response, because authentication decisions must be immediate.
 
-### Slide 13 — Implementation Stats
-| Metric | Value |
-|--------|-------|
-| Lines of Python | ~900 |
-| Endpoints | 12 |
-| Test coverage | 96% |
-| SAST findings | 0 |
-| CI status | ✅ green |
-| Increments | 10 |
-
-### Slide 14 — Risk Register (Module V)
-- R1 JWT secret leak (RE 2.5) → `.env` + gitignore + rotate
-- R2 Weak passwords (RE 2.4) → Pydantic min-length
-- R4 Deadline overrun (RE 2.0) → Agile increments
-- R6 Dependency CVE (RE 2.0) → `pip-audit` planned
-
-### Slide 15 — Maintenance Plan (Module V)
-- Corrective 20% | Adaptive 20% | Perfective 50% | Preventive 10%
-- Semantic versioning + Conventional Commits
-- Quality gates: 53 tests + 70% coverage + Bandit clean
-- Decommission plan documented
-
-### Slide 16 — Documentation Delivered
-- SRS (Section 1–7 + appendices)
-- RTM (bidirectional traceability)
-- Design Document
-- Security Document
-- Technical Report
-- User Manual
-- Risk & Maintenance Plan
-
-### Slide 17 — Lessons Learned
-- Iteration beats planning
-- Tests caught 2 real bugs
-- Docs forced clarity
-- Security is a process
-
-### Slide 18 — Future Work
-- OIDC/RS256 asymmetric keys
-- Admin dashboard + audit log
-- Rate limiting (slowapi)
-- Native mobile app
-- Real payment gateway
-
-### Slide 19 — Conclusion
-- Delivered a working, tested, documented SSO system
-- 15/15 FRs implemented
-- 96% coverage, 0 SAST findings
-- Production-ready architecture
-
-### Slide 20 — Thank You & Questions
-- Repo: `github.com/idrismakr-png/abu-sso`
-- Docs: `docs/`
-- Live demo URL: (localhost / Render)
+Future asynchronous events (e.g., "notify user on wallet top-up") would use a message broker — out of scope for this prototype.
 
 ---
 
-## Part 2 — Live Demo Script (~4 minutes)
+## 2. Component Design
 
-**Setup before the session:**
-1. Ensure `conda activate abu-sso` is active.
-2. Run `uvicorn app.main:app --reload` — confirm "Application startup complete".
-3. Open two browser tabs: `http://127.0.0.1:8000/login` and `http://127.0.0.1:8000/docs`.
-4. Optionally have a **backup screen recording** in case of network issues.
+### 2.1 Authentication Component
 
-### Demo Flow
+| File | Responsibility |
+|------|----------------|
+| `app/routers/auth.py` | Endpoints: `/auth/register` (bootstrap), `/auth/login`, `/auth/me` |
+| `app/services/user_service.py` | `create_user`, `authenticate_user`, lookup helpers |
+| `app/utils/security.py` | `hash_password`, `verify_password` (bcrypt) |
+| `app/utils/jwt.py` | `create_access_token`, `decode_token`, `get_current_user` dependency |
+| `app/utils/rbac.py` | `require_role(*roles)` — dependency factory for role gating |
+| `app/schemas/user.py` | `UserCreate`, `UserRead`, `UserLogin`, `Token` |
 
-| Step | Action | Talking Point |
-|------|--------|---------------|
-| 1 | Show login page | "This is the single entry point for all ABU services." |
-| 2 | Enter `idris@abu.edu.ng` / `secret123` | "Credentials verified via bcrypt." |
-| 3 | Show dashboard loads | "One login gave us access to everything." |
-| 4 | Point at balance ₦4750 | "Wallet balance is live from the DB." |
-| 5 | Point at transaction list | "Every credit/debit is timestamped — non-repudiable." |
-| 6 | Point at QR code | "This card works at library and hostel gates." |
-| 7 | Click **Log out** | "Session cleared from the browser." |
-| 8 | Paste dashboard URL again | "Redirected to login — auth guard works." |
-| 9 | Open Swagger `/docs` | "Auto-generated OpenAPI — any service can integrate." |
-| 10 | Run `POST /auth/login` in Swagger | "Same token, machine-consumable." |
-| 11 | Show GitHub Actions page | "Every push runs 53 tests automatically." |
-| 12 | Show coverage report | "96% line coverage." |
+**Key design decision #1:** `get_current_user` is a FastAPI dependency. Any protected route declares `current_user: User = Depends(get_current_user)` — the authentication logic lives in exactly one place.
 
-**Demo tips:**
-- Have a printed cheat sheet of demo credentials.
-- Speak slowly; don't rush.
-- If a step fails: "Let me show you the recorded version" → play backup recording.
+**Key design decision #2 — bootstrap-only registration:**
+```python
+@router.post("/register")
+def register(payload, db):
+    if db.query(User).count() == 0:
+        # First-ever user on a fresh DB → admin bootstrap
+        return create_user(db, ..., role="admin")
+    if settings.allow_public_registration:  # tests only
+        return create_user(db, ..., role=payload.role)
+    # Production: refuse
+    raise HTTPException(403, "Public registration is disabled.")
 
----
+    This closes the self-registration vulnerability discovered during development. Real ABU students don't self-register — ICT creates accounts after admission.
 
-## Part 3 — Defence Q&A (15 likely questions)
+Login is by matric/staff number, not email. authenticate_user(db, matric_no, password) normalises and looks up by matric. Email is stored as a field for records but is not used for authentication.
 
-### Q1. Why FastAPI over Flask or Django?
-**A.** FastAPI gives async-native performance, automatic OpenAPI/Swagger documentation, and type-driven validation via Pydantic. Django is heavyweight for a small SSO API; Flask lacks native async and auto-docs. FastAPI also aligns with modern industry practice.
+2.2 Wallet Component
+File	Responsibility
+app/routers/wallet.py	Endpoints: /wallet, /wallet/topup, /wallet/pay, /wallet/transactions
+app/services/wallet_service.py	get_or_create_wallet, top_up, pay, list_transactions
+app/models/wallet.py	Wallet + Transaction ORM models
+app/schemas/wallet.py	WalletRead, TransactionRead, TopUpRequest, PayRequest
 
-### Q2. Why a modular monolith rather than microservices?
-**A.** The project is built by one developer within a course timeframe. Microservices add deployment, orchestration, and distributed-transaction overhead. However, the routers are already drawn as service boundaries — any one can be extracted into a microservice later without rewriting business logic.
+Key design decision: every wallet operation is atomic — the balance update and the transaction insert happen in a single db.commit(). If the balance is insufficient, pay() raises before touching the DB.
 
-### Q3. Why JWT instead of server-side sessions?
-**A.** JWT is stateless — the API can be horizontally scaled without a shared session store, and third-party services can verify tokens locally. Sessions require sticky load balancing or Redis. JWT is also the industry standard for SSO.
+2.3 Digital ID Card Component
+File	Responsibility
+app/routers/id_card.py	Endpoint /id-card
+app/services/qr_service.py	build_id_card_payload, generate_qr_data_url
+app/schemas/id_card.py	IdCardResponse
+Key design decision: the QR code encodes only {id, matric_no, role} — no personal data — reducing the risk of information disclosure if a card is photographed.
 
-### Q4. Why bcrypt? Couldn't you use SHA-256?
-**A.** SHA-256 is designed to be *fast* — billions of guesses per second on a GPU. bcrypt is deliberately *slow* (~100 ms per hash) and salt-aware, defeating rainbow tables and brute-force. It is the OWASP-recommended algorithm for password storage.
+2.4 Admin Component (RBAC)
+File	Responsibility
+app/routers/admin.py	Endpoints: list/create users, role change, activate/deactivate, top up wallet, stats
+app/services/admin_service.py	User listing, role changes, admin top-ups, stats aggregation
+app/schemas/admin.py	UserAdminView, AdminTopUpRequest, AdminRoleUpdateRequest, AdminStats
+app/utils/rbac.py	require_role("admin")
 
-### Q5. How do you handle token expiry?
-**A.** JWTs have a 15-minute `exp`. When expired, `/auth/me` returns 401 and the dashboard redirects to `/login`. A future release will add refresh tokens so users aren't forced to re-login frequently.
+Key design decision: the entire admin router declares dependencies=[Depends(require_role("admin"))] — every endpoint in the router is automatically protected. Non-admin callers receive HTTP 403 Forbidden.
 
-### Q6. What did Bandit find?
-**A.** Zero findings across 525 lines. Bandit is a static analysis tool that detects hardcoded secrets, weak cryptography, use of `eval`, and shell injection. The clean result is evidence of secure coding.
+POST /admin/users is the production path for account creation. After the first bootstrap admin, this is the only way to create new users.
 
-### Q7. How did you achieve 96% coverage?
-**A.** Three test layers: 7 unit tests for hashing, 25 service tests for business logic, and 21 integration tests through the FastAPI TestClient. Fixtures give each test a fresh temporary SQLite DB, so state never leaks between tests.
+2.5 Presentation Component
+File	Responsibility
+app/routers/pages.py	Serves /login, /dashboard, /admin
+app/templates/base.html, login.html, dashboard.html, admin.html	Jinja2 templates
+app/static/css/style.css	Green campus theme
+app/static/js/app.js	Shared JS; page logic inline in templates
+The dashboard calls /auth/me, /wallet, /wallet/transactions, and /id-card using the JWT in localStorage. It also wires six service cards to their respective mock-service URLs (auto-detects local vs production).
 
-### Q8. What is your STRIDE threat model?
-**A.** Spoofing (stolen creds) → bcrypt + generic errors; Tampering (SQLi, JWT modification) → ORM + HMAC signature; Repudiation → timestamped transactions; Info Disclosure → no password in responses; DoS → rate limiting planned; Elevation → `get_current_user` scoping.
+3. Data Design
+3.1 Entity Relationship Diagram
+See docs/diagrams/class_model.png.
 
-### Q9. How is your architecture scalable?
-**A.** Stateless JWT allows horizontal scale-out behind a load balancer. The DB is the only stateful piece and can switch from SQLite to PostgreSQL by changing `DATABASE_URL`. SQLAlchemy abstracts the DB engine.
+3.2 Table Definitions
+users
 
-### Q10. What would you do differently if you started again?
-**A.** Introduce pytest from the first commit (TDD); add rate limiting early; define the admin role before building the UI so RBAC is baked in; set up CI from day one rather than after tests existed.
+Column	Type	Constraint
+id	VARCHAR(36)	PRIMARY KEY
+email	VARCHAR(255)	UNIQUE, NOT NULL, INDEXED
+password_hash	VARCHAR(255)	NOT NULL
+full_name	VARCHAR(255)	NULL
+role	VARCHAR(50)	NOT NULL, default 'student'
+matric_no	VARCHAR(50)	UNIQUE, NOT NULL, INDEXED
+is_active	BOOLEAN	NOT NULL, default TRUE
+created_at	DATETIME	NOT NULL
+Note: matric_no is now UNIQUE and NOT NULL because it's the login identifier.
 
-### Q11. How do you prevent SQL injection?
-**A.** Every query goes through SQLAlchemy's parameterisation — no f-strings or string concatenation in queries. This is enforced by the ORM pattern.
+wallets
 
-### Q12. How do you prevent Cross-Site Scripting (XSS)?
-**A.** All API responses are JSON (no HTML). The Jinja2 templates auto-escape variables by default. Since we don't render user content with `|safe`, XSS is mitigated.
+Column	Type	Constraint
+id	VARCHAR(36)	PRIMARY KEY
+user_id	VARCHAR(36)	FOREIGN KEY → users.id, UNIQUE
+balance	NUMERIC(10,2)	NOT NULL, default 0
+created_at	DATETIME	NOT NULL
 
-### Q13. What is the risk register about?
-**A.** Seven risks are documented with probability, impact, exposure (RE = P × I), and mitigation. The top two: R1 (JWT secret leak) and R2 (weak user passwords). Both are actively managed.
+transactions
 
-### Q14. What is your maintenance plan?
-**A.** 20% corrective, 20% adaptive, 50% perfective, 10% preventive. Quality gates before every release: 53 tests pass, coverage ≥70%, Bandit clean. Semantic versioning + Conventional Commits.
+Column	Type	Constraint
+id	VARCHAR(36)	PRIMARY KEY
+wallet_id	VARCHAR(36)	FOREIGN KEY → wallets.id
+amount	NUMERIC(10,2)	NOT NULL
+type	VARCHAR(20)	NOT NULL, credit or debit
+description	VARCHAR(255)	NULL
+created_at	DATETIME	NOT NULL
 
-### Q15. What's next after the prototype?
-**A.** (1) OIDC/RS256 for real ABU ICT integration, (2) admin dashboard with audit log, (3) rate limiting via slowapi, (4) mobile app, (5) real payment gateway.
+3.3 Design Decisions
+UUIDs instead of integers for primary keys — safe to expose in URLs, work identically in SQLite and PostgreSQL.
 
----
+Numeric(10,2) for money — avoids floating-point rounding errors.
 
-## Part 4 — Presentation Day Checklist
+Wallet created lazily — users who never use the wallet don't consume a row.
 
-**Night before:**
-- [ ] Charge laptop; bring charger
-- [ ] Backup: USB with source code + zip of repo
-- [ ] Backup: screen recording of the demo (MP4)
-- [ ] Print: cheat sheet of demo credentials
-- [ ] Print: 1-page summary of rubric coverage
+Cascade delete — deleting a wallet removes its transactions automatically.
 
-**Morning of:**
-- [ ] `conda activate abu-sso`
-- [ ] `uvicorn app.main:app --reload`
-- [ ] Verify `/login`, `/dashboard`, `/docs` all load
-- [ ] Clear browser cache
-- [ ] Close all extra apps (Slack, WhatsApp) — no notification popups
+matric_no unique + indexed — because it's the login identifier.
 
-**During presentation:**
-- [ ] Speak slowly; pause between slides
-- [ ] If demo fails → switch to recording without apology
-- [ ] Reference concrete artifacts: SRS, RTM, test count, coverage, Bandit output
+Case-insensitive matric matching — matric is stored uppercase; lookups normalise input.
 
----
+4. Sequence Design — Payment Flow
+See docs/diagrams/sequence_login.png for the login sequence. Below is the wallet payment flow:
+Client (browser)
+   │
+   │  POST /wallet/pay {amount: 250}
+   │  Authorization: Bearer <JWT>
+   ▼
+Router (wallet.py: pay_from_wallet)
+   │
+   ├─ Depends(get_current_user) ──► JWT validated, User loaded
+   │
+   ├─ Depends(get_db) ─────────────► DB session opened
+   │
+   ├─ wallet_service.get_or_create_wallet(db, user)
+   │
+   └─ wallet_service.pay(db, wallet, 250)
+        │
+        ├─ if amount <= 0: raise ValueError
+        ├─ if balance < amount: raise ValueError
+        │
+        ├─ wallet.balance -= 250
+        ├─ db.add(Transaction(type='debit', amount=250))
+        ├─ db.commit()
+        │
+        └─ return Transaction
+   │
+   ▼
+Client receives 201 Created + transaction JSON
 
-*End of Presentation Guide.*
+5. Resilience & Scalability
+5.1 Resilience
+Fail securely: auth failures return 401 with a generic message; unauthorized roles return 403.
+
+Transaction atomicity: wallet balance and transaction record commit together.
+
+Stateless auth: if any server instance dies, the user's token works on another instance.
+
+Bootstrap safety: a fresh deployment can always be initialised (first user → admin); a compromised public register endpoint cannot create new admins.
+
+Mock services degrade gracefully: if the IdP is unreachable, they return HTTP 503 instead of serving unauthenticated content.
+
+5.2 Scalability
+Horizontal scaling: stateless JWT — multiple IdP instances behind a load balancer.
+
+Mock services scale independently — each runs on its own Render web service.
+
+Database growth: SQLite is single-writer; at production scale, swap DATABASE_URL to PostgreSQL — no code changes.
+
+Read replicas: future work can add PostgreSQL read replicas for /auth/me.
+
+5.3 Known Limitations
+No rate limiting yet (planned via slowapi).
+
+No refresh tokens — users must re-login every 15 minutes.
+
+No async task queue — everything is synchronous in the request cycle.
+
+Mock services use URL query-param token passing; production would use HttpOnly cookies or BFF pattern.
+
+Render free tier sleeps after 15 minutes of inactivity.
+
+6. Design Patterns Applied
+Pattern	Where	Why
+Repository / Service Layer	app/services/*.py	Business logic separated from HTTP
+Dependency Injection	FastAPI Depends()	Testable; single source of truth
+Schema / DTO	Pydantic *Create, *Read classes	Never leak ORM internals
+Singleton	settings = Settings() in config.py	One configuration source
+Factory	create_engine, sessionmaker in database.py	Configurable DB backend
+Factory (dependency)	require_role(*roles) in rbac.py	Reusable role gating
+Middleware / Decorator	get_current_user dependency	Cross-cutting auth
+Layered Architecture	Routers / Services / Models	Clear responsibilities
+Service-Oriented	mock-services/*/main.py	Independent deployable units
+Bootstrap Pattern	auth.register	First-user admin creation on fresh DB
+
+7. Technology Choices — Justification
+Choice	Alternative	Why we chose ours
+FastAPI	Flask / Django	Async-native, auto-generated OpenAPI, type-driven
+SQLAlchemy	Raw SQL / Django ORM	Portable between SQLite and PostgreSQL
+SQLite (dev)	PostgreSQL from day 1	Zero setup for a beginner; migrate later
+JWT (HS256)	Server-side sessions	Stateless; ideal for SSO across services
+bcrypt	SHA-256	Designed for password storage; salted; slow by design
+RBAC middleware	Hard-coded role checks	Reusable, testable, single source of truth
+Jinja2 + vanilla JS	React / Vue	Simpler; sufficient for three-page UI
+pytest	unittest	Cleaner syntax, better fixtures
+Playwright	Selenium	Faster, modern, first-class Python support
+StaticPool (tests)	Fresh DB per test	One in-memory DB shared by all sessions
+GitHub Actions	Jenkins	Free, integrated with GitHub
+Bandit	Manual review	Automated SAST — evidence for security rubric
+Render + Neon	Single-provider hosting	Free tier stability; separation of compute and storage
+
+8. Distributed SSO Architecture (Six Mock Services)
+To demonstrate that ABU-SSO is genuinely a distributed, service-oriented system (not merely a login page), six independent mock services were built that trust ABU-SSO as their identity provider.
+
+8.1 Why Six Services?
+The original problem statement (COEN838 Question 7) says:
+
+"Students currently juggle multiple credentials: the central student portal for course registration, the LMS (Moodle) for classes, the Wi-Fi portal, and physical ID cards for hostel/library access."
+
+The problem lists six distinct systems. Building six separate services that independently verify the SSO token proves the core claim: one login → many services.
+
+8.2 Service Topology
+   ┌──────────────────────────────────────────────────────────────┐
+   │                    User's Browser                            │
+   └──────────────────────────┬───────────────────────────────────┘
+                              │
+                    ┌─────────▼──────────┐
+                    │  ABU-SSO (IdP)     │  ← Identity Provider
+                    │  abu-sso.onrender.com │
+                    │                    │
+                    │  Issues JWT        │
+                    │  Verifies JWT      │
+                    └─────────┬──────────┘
+                              │
+     ┌──────────┬─────────────┼─────────────┬──────────┬──────────┐
+     │          │             │             │          │          │
+┌────▼────┐┌────▼────┐┌───────▼────┐┌───────▼──┐┌──────▼───┐┌─────▼─────┐
+│ Portal  ││  LMS    ││  Library   ││  Hostel  ││  Wi-Fi   ││  Result   │
+│ :4001   ││  :4002  ││  :4003     ││  :4004   ││  :4005   ││  Checker  │
+│         ││         ││            ││          ││          ││  :4006    │
+│ Verify  ││ Verify  ││  Verify    ││  Verify  ││  Verify  ││  Verify   │
+│ via IdP ││ via IdP ││  via IdP   ││  via IdP ││  via IdP ││  via IdP  │
+└─────────┘└─────────┘└────────────┘└──────────┘└──────────┘└───────────┘
+
+In production (Render): each service is deployed at its own HTTPS URL (abu-sso-portal.onrender.com, etc.).
+In development (localhost): each runs on a distinct port.
+
+8.3 Design Decisions
+Decision	Choice	Justification
+Service boundary	Each service is a standalone FastAPI app	Independence — one can crash without affecting others
+Data ownership	No service has a user table	IdP is single source of truth; services are stateless verifiers
+Token verification	HTTP call to IdP/auth/me	Simpler than sharing the JWT secret; models OIDC UserInfo
+Token transport	URL query param ?token=<JWT>	Simplest cross-origin demo; production would use cookies or BFF
+Coupling	Loose — services know only the IdP's base URL (env var)	Swap or scale IdP without touching services
+Failure mode	HTTP 503 if IdP unreachable	Fail-secure: never serve data without verification
+Environment detection	Dashboard JS picks URLs based on window.location.hostname	Same code works locally and on Render
+
+8.4 Inter-Service Communication Patterns
+Pattern used: Synchronous REST with token-based trust.
+
+Each service performs GET {IDP_URL}/auth/me with the JWT in the Authorization header.
+
+The IDP_URL is an environment variable on Render, set to the main app's URL.
+
+Response is used for that request only (not persisted).
+
+Latency cost: one extra HTTP round-trip (~5–10 ms local; 100–200 ms to Render).
+
+Alternative patterns considered:
+
+Pattern	Why we didn't choose it
+Shared JWT secret (each service verifies signature)	Requires distributing secret; harder to rotate
+RS256 public-key verification	Better for production; overkill for demo
+Event-based (Kafka/RabbitMQ)	Correct for async workloads; unnecessary for synchronous reads
+OIDC Discovery + JWKS	Production-grade; requires HTTPS and DNS setup beyond demo scope
+
+8.5 Scalability & Resilience Implications
+Horizontal scale-out — services are stateless; N instances can run behind a load balancer.
+
+IdP is the bottleneck — every request from every service calls /auth/me. In production, this would be mitigated by (a) caching verified tokens at the service for their remaining TTL, and (b) using RS256 with JWKS for local verification.
+
+Failure isolation — if the Library service dies, Portal and LMS remain fully functional.
+
+Fail-secure — if the IdP is unreachable, services return 503, never serve data unauthenticated.
+
+8.6 How It Maps to the Rubric
+Rubric line	How the mock services satisfy it
+"distributed/service-oriented solution"	Six independent services, each a separate process/deployment
+"inter-component communication pattern"	Synchronous REST; token via HTTP header; documented above
+"scalability"	Stateless services; IdP bottleneck documented with mitigations
+"resilience"	Fail-secure when IdP unreachable; failure isolation
+
+8.7 Files
+File	Port	Purpose
+mock-services/portal/main.py	4001	Course registration (Student Portal)
+mock-services/lms/main.py	4002	Lectures & assignments (Moodle)
+mock-services/library/main.py	4003	Books & fines
+mock-services/hostel/main.py	4004	Room booking & gate access
+mock-services/wifi/main.py	4005	Network access & device registration
+mock-services/results/main.py	4006	Semester results & GPA
+mock-services/*/templates/service.html	—	Shared template (copied to all six)
+mock-services/*/requirements.txt	—	Independent dependency files for deployment
+
+8.8 Demo Flow
+User logs in once at ABU-SSO (/login).
+
+Dashboard renders six service cards.
+
+Clicking Student Portal opens https://abu-sso-portal.onrender.com/?token=<JWT>.
+
+The Portal service:
+
+Extracts the token from the query string.
+
+Calls GET https://abu-sso.onrender.com/auth/me.
+
+Renders the Portal page with the user's profile.
+
+Same flow for LMS, Library, Hostel, Wi-Fi, Result Checker — no second password prompt in any of them.
+
+This demonstrates the single sign-on guarantee end-to-end, publicly, on the internet.
+
+9. Deployment Architecture
+┌─────────────────────────────────────────────────────────┐
+│                        GitHub                            │
+│  idrismakr-png/abu-sso (main branch)                     │
+└────────────────────────┬────────────────────────────────┘
+                         │ webhook on push
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                        Render                            │
+│                                                          │
+│  ┌─────────────────┐   ┌──────────────────────────────┐ │
+│  │  abu-sso (IdP)  │◄──┤ abu-sso-portal               │ │
+│  │                 │   │ abu-sso-lms                  │ │
+│  │  uvicorn        │   │ abu-sso-library              │ │
+│  │  app.main:app   │   │ abu-sso-hostel               │ │
+│  │                 │   │ abu-sso-wifi                 │ │
+│  │                 │   │ abu-sso-results              │ │
+│  └────────┬────────┘   └──────────────────────────────┘ │
+│           │                                              │
+└───────────┼──────────────────────────────────────────────┘
+            │  TLS (PostgreSQL wire protocol)
+            ▼
+┌─────────────────────────────────────────────────────────┐
+│                        Neon                              │
+│  PostgreSQL 18 (managed, free tier, no expiry)           │
+└─────────────────────────────────────────────────────────┘
+
+Deployment triggers: every push to main fires a GitHub webhook → Render detects the change → rebuilds the affected services → swaps them into production with zero downtime.
+
+Configuration: render.yaml declares all seven web services. Environment variables (DATABASE_URL, JWT_SECRET, IDP_URL) are managed in Render's dashboard.
