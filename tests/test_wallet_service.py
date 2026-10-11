@@ -13,7 +13,12 @@ from app.services.wallet_service import (
 
 @pytest.fixture
 def user(db):
-    return create_user(db, email="walletuser@abu.edu.ng", password="secret123")
+    return create_user(
+        db,
+        email="walletuser@abu.edu.ng",
+        password="secret123",
+        matric_no="WALLET/001",
+    )
 
 
 def test_get_or_create_wallet_creates_wallet_with_zero_balance(db, user):
@@ -104,6 +109,5 @@ def test_list_transactions_newest_first(db, user):
     top_up(db, wallet, Decimal("1000.00"), "First")
     top_up(db, wallet, Decimal("500.00"), "Second")
     txns = list_transactions(db, wallet)
-    # Most recent first
     assert txns[0].description == "Second"
     assert txns[1].description == "First"

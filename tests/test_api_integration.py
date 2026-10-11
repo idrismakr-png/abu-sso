@@ -1,14 +1,14 @@
-def register(client, email="api@abu.edu.ng", password="secret123", **extra):
-    payload = {"email": email, "password": password, **extra}
+def register(client, email="api@abu.edu.ng", password="secret123", matric_no="ABU/2024/1111", **extra):
+    payload = {"email": email, "password": password, "matric_no": matric_no, **extra}
     return client.post("/auth/register", json=payload)
 
 
-def login(client, email="api@abu.edu.ng", password="secret123"):
-    return client.post("/auth/login", json={"email": email, "password": password})
+def login(client, matric_no="ABU/2024/1111", password="secret123"):
+    return client.post("/auth/login", json={"matric_no": matric_no, "password": password})
 
 
-def auth_headers(client, email="api@abu.edu.ng", password="secret123"):
-    res = login(client, email, password)
+def auth_headers(client, matric_no="ABU/2024/1111", password="secret123"):
+    res = login(client, matric_no, password)
     token = res.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
@@ -29,17 +29,34 @@ def test_register_returns_201_and_user(client):
 
 def test_register_duplicate_email_returns_400(client):
     register(client)
-    res = register(client)
+    res = register(client, matric_no="ABU/2024/2222")
     assert res.status_code == 400
 
 
+def test_register_duplicate_matric_returns_400(client):
+    register(client, email="first@abu.edu.ng", matric_no="ABU/2024/3333")
+    res = register(client, email="second@abu.edu.ng", matric_no="ABU/2024/3333")
+    assert res.status_code == 400
+
+
+def test_register_missing_matric_returns_422(client):
+    res = client.post("/auth/register", json={"email": "noMatric@abu.edu.ng", "password": "secret123"})
+    assert res.status_code == 422
+
+
 def test_register_invalid_email_returns_422(client):
-    res = client.post("/auth/register", json={"email": "not-an-email", "password": "secret123"})
+    res = client.post(
+        "/auth/register",
+        json={"email": "not-an-email", "password": "secret123", "matric_no": "ABU/2024/4444"},
+    )
     assert res.status_code == 422
 
 
 def test_register_short_password_returns_422(client):
-    res = client.post("/auth/register", json={"email": "short@abu.edu.ng", "password": "12"})
+    res = client.post(
+        "/auth/register",
+        json={"email": "short@abu.edu.ng", "password": "12", "matric_no": "ABU/2024/5555"},
+    )
     assert res.status_code == 422
 
 
@@ -55,6 +72,12 @@ def test_login_returns_token(client):
     assert len(data["access_token"]) > 20
 
 
+def test_login_with_lowercase_matric_works(client):
+    register(client, matric_no="ABU/2024/6666")
+    res = login(client, matric_no="abu/2024/6666")
+    assert res.status_code == 200
+
+
 def test_login_wrong_password_returns_401(client):
     register(client)
     res = login(client, password="wrongpass")
@@ -62,7 +85,7 @@ def test_login_wrong_password_returns_401(client):
 
 
 def test_login_unknown_user_returns_401(client):
-    res = login(client, email="ghost@abu.edu.ng")
+    res = login(client, matric_no="ABU/2024/GHOST")
     assert res.status_code == 401
 
 

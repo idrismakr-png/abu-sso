@@ -2,15 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.user import User
 from app.schemas.admin import (
     AdminRoleUpdateRequest,
     AdminStats,
     AdminTopUpRequest,
     UserAdminView,
 )
+from app.schemas.user import UserCreate
 from app.schemas.wallet import TransactionRead
 from app.services import admin_service
+from app.services.user_service import create_user
 from app.utils.rbac import require_role
 
 router = APIRouter(
@@ -24,6 +25,30 @@ router = APIRouter(
 def list_users(db: Session = Depends(get_db)):
     """List all registered users (admin only)."""
     return admin_service.list_all_users(db)
+
+
+@router.post("/users", response_model=UserAdminView, status_code=status.HTTP_201_CREATED)
+def create_new_user(
+    payload: UserCreate,
+    db: Session = Depends(get_db),
+):
+    """Create a new user account (admin only).
+
+    In production this is the ONLY way accounts are created —
+    students and staff do not self-register; ABU ICT creates their account
+    after admission or employment.
+    """
+    try:
+        return create_user(
+            db,
+            email=payload.email,
+            password=payload.password,
+            full_name=payload.full_name,
+            role=payload.role,
+            matric_no=payload.matric_no,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.patch("/users/{user_id}/role", response_model=UserAdminView)
@@ -70,4 +95,3 @@ def top_up_other_wallet(
 def stats(db: Session = Depends(get_db)):
     """Aggregate statistics for the admin dashboard."""
     return admin_service.get_stats(db)
-    

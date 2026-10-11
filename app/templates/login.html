@@ -6,27 +6,33 @@
 <div class="card" style="max-width: 420px; margin: 0 auto;">
     <h2>Sign in</h2>
     <p style="font-size: 14px; color: #555; margin-bottom: 8px;">
-        Use your ABU credentials to access all campus services.
+        Use your ABU matric number (students) or staff number (staff) to sign in.
     </p>
 
     <form id="login-form">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" required autocomplete="email">
+        <label for="matric_no">Matric / Staff Number</label>
+        <input type="text" id="matric_no" name="matric_no" required
+               autocomplete="username" placeholder="e.g., P25EGCP9003">
 
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" required autocomplete="current-password">
+        <input type="password" id="password" name="password" required
+               autocomplete="current-password">
 
         <button type="submit" id="login-btn">Sign in</button>
     </form>
 
     <div id="error-box" class="error hidden"></div>
+
+    <p style="margin-top: 18px; font-size: 13px; color: #777; text-align: center;">
+        Don't have an account? Contact ABU ICT — accounts are created by the university.
+    </p>
 </div>
 
 <script>
 document.getElementById("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const email = document.getElementById("email").value.trim();
+    const matric_no = document.getElementById("matric_no").value.trim();
     const password = document.getElementById("password").value;
     const errBox = document.getElementById("error-box");
     const btn = document.getElementById("login-btn");
@@ -39,12 +45,16 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
         const res = await fetch("/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ matric_no, password })
         });
 
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
-            throw new Error(data.detail || "Login failed");
+            let msg = data.detail;
+            if (Array.isArray(msg)) {
+                msg = msg.map(e => `${(e.loc || []).join(".") || "field"}: ${e.msg}`).join("; ");
+            }
+            throw new Error(msg || "Login failed");
         }
 
         const data = await res.json();

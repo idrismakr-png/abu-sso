@@ -16,35 +16,58 @@
 <div class="card">
     <h2>System Statistics</h2>
     <div class="grid">
-        <div class="service-card">
-            <h3 id="stat-users">—</h3>
-            <p>Total Users</p>
-        </div>
-        <div class="service-card">
-            <h3 id="stat-active">—</h3>
-            <p>Active Users</p>
-        </div>
-        <div class="service-card">
-            <h3 id="stat-wallets">—</h3>
-            <p>Wallets</p>
-        </div>
-        <div class="service-card">
-            <h3 id="stat-balance">—</h3>
-            <p>Total Balance</p>
-        </div>
-        <div class="service-card">
-            <h3 id="stat-txns">—</h3>
-            <p>Transactions</p>
-        </div>
+        <div class="service-card"><h3 id="stat-users">—</h3><p>Total Users</p></div>
+        <div class="service-card"><h3 id="stat-active">—</h3><p>Active Users</p></div>
+        <div class="service-card"><h3 id="stat-wallets">—</h3><p>Wallets</p></div>
+        <div class="service-card"><h3 id="stat-balance">—</h3><p>Total Balance</p></div>
+        <div class="service-card"><h3 id="stat-txns">—</h3><p>Transactions</p></div>
     </div>
+</div>
+
+<div class="card">
+    <h2>Create User Account</h2>
+    <p style="font-size:13px; color:#555; margin-bottom:14px;">
+        Only administrators can create accounts. Students and staff do not self-register —
+        they receive credentials from ABU ICT after admission or employment.
+    </p>
+    <form id="create-user-form" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+            <label for="new-full-name">Full Name</label>
+            <input type="text" id="new-full-name" required>
+        </div>
+        <div>
+            <label for="new-email">Email</label>
+            <input type="email" id="new-email" required>
+        </div>
+        <div>
+            <label for="new-matric">Matric / Staff No.</label>
+            <input type="text" id="new-matric" required placeholder="e.g., P25EGCP9003">
+        </div>
+        <div>
+            <label for="new-role">Role</label>
+            <select id="new-role" style="width:100%; padding:10px 12px; margin-top:6px; border:1px solid #ccd3dd; border-radius:6px; font-size:15px;">
+                <option value="student">Student</option>
+                <option value="staff">Staff</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+        <div style="grid-column:1 / -1;">
+            <label for="new-password">Initial Password (min 6 characters)</label>
+            <input type="password" id="new-password" minlength="6" required>
+        </div>
+        <div style="grid-column:1 / -1;">
+            <button type="submit" id="create-user-btn">Create Account</button>
+        </div>
+    </form>
+    <div id="create-user-msg" class="hidden" style="margin-top:12px;"></div>
 </div>
 
 <div class="card">
     <h2>Top Up Any Wallet</h2>
     <form id="topup-form" style="display:flex; gap:12px; flex-wrap:wrap; align-items:end;">
         <div style="flex:1; min-width:220px;">
-            <label for="topup-email">User Email</label>
-            <input type="email" id="topup-email" required>
+            <label for="topup-matric">User Matric / Staff No.</label>
+            <input type="text" id="topup-matric" required>
         </div>
         <div style="width:140px;">
             <label for="topup-amount">Amount (₦)</label>
@@ -60,9 +83,9 @@
     <table style="width:100%; border-collapse:collapse; font-size:14px;">
         <thead>
             <tr style="text-align:left; border-bottom:2px solid #1b5e20;">
-                <th style="padding:8px;">Email</th>
+                <th style="padding:8px;">Matric / Staff No.</th>
                 <th style="padding:8px;">Name</th>
-                <th style="padding:8px;">Matric</th>
+                <th style="padding:8px;">Email</th>
                 <th style="padding:8px;">Role</th>
                 <th style="padding:8px;">Active</th>
                 <th style="padding:8px;">Actions</th>
@@ -93,15 +116,27 @@ async function api(path, opts = {}) {
         return null;
     }
     if (res.status === 403) {
-        // Not an admin — redirect to normal dashboard
         window.location.href = "/dashboard";
         return null;
     }
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.detail || ("Failed: " + path));
+        let msg = data.detail;
+        if (Array.isArray(msg)) {
+            msg = msg.map(e => `${(e.loc || []).join(".") || "field"}: ${e.msg}`).join("; ");
+        }
+        throw new Error(msg || ("Failed: " + path));
     }
     return res.json();
+}
+
+function showToast(containerId, msg, kind) {
+    const box = document.getElementById(containerId);
+    if (!box) return;
+    box.textContent = msg;
+    box.className = kind === "error" ? "error" : "success";
+    box.classList.remove("hidden");
+    setTimeout(() => box.classList.add("hidden"), 4000);
 }
 
 async function loadStats() {
@@ -124,9 +159,9 @@ async function loadUsers() {
     }
     tbody.innerHTML = users.map(u => `
         <tr style="border-bottom:1px solid #eee;">
-            <td style="padding:8px;">${u.email}</td>
+            <td style="padding:8px;"><strong>${u.matric_no || "—"}</strong></td>
             <td style="padding:8px;">${u.full_name || "—"}</td>
-            <td style="padding:8px;">${u.matric_no || "—"}</td>
+            <td style="padding:8px;">${u.email}</td>
             <td style="padding:8px;">
                 <select data-user-id="${u.id}" data-action="role">
                     <option value="student" ${u.role === "student" ? "selected" : ""}>student</option>
@@ -145,7 +180,6 @@ async function loadUsers() {
         </tr>
     `).join("");
 
-    // Wire up role change dropdowns
     tbody.querySelectorAll('select[data-action="role"]').forEach(sel => {
         sel.addEventListener("change", async (e) => {
             const userId = e.target.dataset.userId;
@@ -155,42 +189,73 @@ async function loadUsers() {
                     method: "PATCH",
                     body: JSON.stringify({ role: newRole }),
                 });
-                showToast("Role updated to " + newRole, "success");
+                showToast("topup-msg", "Role updated to " + newRole, "success");
                 await loadStats();
             } catch (err) {
-                showToast(err.message, "error");
+                showToast("topup-msg", err.message, "error");
                 await loadUsers();
             }
         });
     });
 
-    // Wire up activate/deactivate buttons
     tbody.querySelectorAll('button[data-action="toggle-active"]').forEach(btn => {
         btn.addEventListener("click", async (e) => {
             const userId = e.target.dataset.userId;
             const active = e.target.dataset.active === "true";
             try {
                 await api("/admin/users/" + userId + "/active?active=" + active, { method: "PATCH" });
-                showToast(active ? "User activated" : "User deactivated", "success");
+                showToast("topup-msg", active ? "User activated" : "User deactivated", "success");
                 await loadUsers();
                 await loadStats();
             } catch (err) {
-                showToast(err.message, "error");
+                showToast("topup-msg", err.message, "error");
             }
         });
     });
 }
 
+document.getElementById("create-user-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("create-user-btn");
+    btn.disabled = true;
+    btn.textContent = "Creating...";
+
+    const payload = {
+        full_name: document.getElementById("new-full-name").value.trim() || null,
+        email: document.getElementById("new-email").value.trim(),
+        matric_no: document.getElementById("new-matric").value.trim().toUpperCase(),
+        role: document.getElementById("new-role").value,
+        password: document.getElementById("new-password").value,
+    };
+
+    try {
+        const created = await api("/admin/users", {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
+        showToast("create-user-msg",
+            "✅ Account created: " + created.matric_no + " (role: " + created.role + ")",
+            "success");
+        document.getElementById("create-user-form").reset();
+        await loadUsers();
+        await loadStats();
+    } catch (err) {
+        showToast("create-user-msg", err.message, "error");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "Create Account";
+    }
+});
+
 document.getElementById("topup-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const email = document.getElementById("topup-email").value.trim();
+    const matric = document.getElementById("topup-matric").value.trim().toUpperCase();
     const amount = parseFloat(document.getElementById("topup-amount").value);
 
-    // We need the user_id — find it from the loaded users list
     const users = await api("/admin/users");
-    const target = users.find(u => u.email === email);
+    const target = users.find(u => (u.matric_no || "").toUpperCase() === matric);
     if (!target) {
-        showToast("No user with that email.", "error");
+        showToast("topup-msg", "No user with that matric/staff number.", "error");
         return;
     }
 
@@ -199,21 +264,13 @@ document.getElementById("topup-form").addEventListener("submit", async (e) => {
             method: "POST",
             body: JSON.stringify({ user_id: target.id, amount: amount, description: "Admin top-up" }),
         });
-        showToast("Topped up ₦" + amount.toFixed(2) + " to " + email, "success");
+        showToast("topup-msg", "Topped up ₦" + amount.toFixed(2) + " to " + matric, "success");
         document.getElementById("topup-form").reset();
         await loadStats();
     } catch (err) {
-        showToast(err.message, "error");
+        showToast("topup-msg", err.message, "error");
     }
 });
-
-function showToast(msg, kind) {
-    const box = document.getElementById("topup-msg");
-    box.textContent = msg;
-    box.className = kind === "error" ? "error" : "success";
-    box.classList.remove("hidden");
-    setTimeout(() => box.classList.add("hidden"), 4000);
-}
 
 document.getElementById("logout-btn").addEventListener("click", () => {
     localStorage.removeItem("abu_token");

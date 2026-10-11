@@ -5,13 +5,13 @@ from pydantic import BaseModel, EmailStr, Field
 
 
 class UserCreate(BaseModel):
-    """Fields required to register a new user."""
+    """Fields required to create a new user (admin-only in production)."""
 
     email: EmailStr
     password: str = Field(min_length=6, max_length=128)
     full_name: Optional[str] = Field(default=None, max_length=255)
     role: str = Field(default="student")
-    matric_no: Optional[str] = Field(default=None, max_length=50)
+    matric_no: str = Field(min_length=3, max_length=50, description="Matric or staff number")
 
 
 class UserRead(BaseModel):
@@ -29,7 +29,9 @@ class UserRead(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    """Login credentials. Authentication is by matric/staff number, not email."""
+
+    matric_no: str
     password: str
 
 
