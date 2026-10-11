@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for ABU-SSO tests (unit + service + integration + E2E)."""
+"""Shared pytest fixtures for ABU-SSO — with full diagnostics."""
 import os
 import subprocess
 import sys
@@ -11,48 +11,88 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-_tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-TEST_DB_PATH = _tmp_db.name
-_tmp_db.close()
+os.environ["ALLOW_PUBLIC_REGISTRATION"] = "true"
+os.environ["JWT_SECRET"] = "test-secret-key-with-at-least-32-bytes-length-ok"
 
-os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB_PATH}"
+# ============ Import app modules ============
+import app.database as db_module
+from app.database import Base, get_db
+from app.models import Transaction, User, Wallet
+from app.main import app
 
-from app.database import Base, get_db  # noqa: E402
-from app.main import app  # noqa: E402
-from app.models import Transaction, User, Wallet  # noqa: E402,F401
-
-engine = create_engine(
-    f"sqlite:///{TEST_DB_PATH}",
+# ============ One test engine, shared by EVERYTHING ============
+test_engine = create_engine(
+    "sqlite://",
     connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+TestSession = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+
+# Create tables on the shared engine.
+Base.metadata.create_all(bind=test_engine)
+
+# Patch the app's module-level engine + session factory.
+# Anything that calls `SessionLocal()` from app.database now uses the test engine.
+db_module.engine = test_engine
+db_module.SessionLocal = TestSession
 
 
-def override_get_db():
-    db = TestingSessionLocal()
+def _override_get_db():
+    s = TestSession()
     try:
-        yield db
+        yield s
     finally:
-        db.close()
+        s.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
+# Also override the FastAPI dependency (belt and braces).
+app.dependency_overrides[get_db] = _override_get_db
 
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_database():
-    Base.metadata.create_all(bind=engine)
+# --- Diagnostic helper (called by fixtures) ---
+def _tables_in_engine(engine):
+    import sqlite3
+    with engine.connect() as conn:
+        cursor = conn.connection.cursor()
+        rows = cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()
+        return [r[0] for r in rows]
+
+
+print(f"\n[conftest] test_engine id={id(test_engine)} url={test_engine.url}")
+print(f"[conftest] db_module.engine is test_engine? {db_module.engine is test_engine}")
+print(f"[conftest] db_module.SessionLocal is TestSession? {db_module.SessionLocal is TestSession}")
+print(f"[conftest] Tables right after create_all: {_tables_in_engine(test_engine)}\n")
+
+
+# ============ Fixtures ============
+
+@pytest.fixture(autouse=True)
+def diag_and_cleanup():
+    """Before each test: print tables. After: clean rows."""
+    tables_before = _tables_in_engine(test_engine)
+    if "users" not in tables_before:
+        print(f"\n[!] tables missing before test: {tables_before}")
+        Base.metadata.create_all(bind=test_engine)
+        print(f"[!] recreated. now: {_tables_in_engine(test_engine)}")
     yield
-    Base.metadata.drop_all(bind=engine)
+    s = TestSession()
     try:
-        os.unlink(TEST_DB_PATH)
-    except OSError:
-        pass
+        s.query(Transaction).delete()
+        s.query(Wallet).delete()
+        s.query(User).delete()
+        s.commit()
+    except Exception:
+        s.rollback()
+    finally:
+        s.close()
 
 
 @pytest.fixture
@@ -63,27 +103,14 @@ def client():
 
 @pytest.fixture
 def db():
-    session = TestingSessionLocal()
+    s = TestSession()
     try:
-        yield session
+        yield s
     finally:
-        session.close()
+        s.close()
 
 
-@pytest.fixture(autouse=True)
-def clean_tables():
-    yield
-    session = TestingSessionLocal()
-    try:
-        session.query(Transaction).delete()
-        session.query(Wallet).delete()
-        session.query(User).delete()
-        session.commit()
-    finally:
-        session.close()
-
-
-# ---------- E2E fixtures ----------
+# ============ E2E fixtures ============
 
 E2E_PORT = 8001
 E2E_BASE_URL = f"http://127.0.0.1:{E2E_PORT}"
@@ -91,13 +118,13 @@ E2E_BASE_URL = f"http://127.0.0.1:{E2E_PORT}"
 
 @pytest.fixture(scope="session")
 def live_server():
-    """Spawn a real uvicorn subprocess on a separate port with its own temp DB."""
     tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     tmp_db.close()
 
     env = os.environ.copy()
-    env["DATABASE_URL"] = f"sqlite:///{tmp_db.name}"
+    env["DATABASE_URL"] = f"sqlite:///{Path(tmp_db.name).as_posix()}"
     env["JWT_SECRET"] = "e2e-test-secret-key-which-is-long-enough-32-bytes"
+    env["ALLOW_PUBLIC_REGISTRATION"] = "true"
     env["PYTHONPATH"] = str(ROOT)
 
     proc = subprocess.Popen(
@@ -135,13 +162,11 @@ def live_server():
 
 @pytest.fixture(scope="session")
 def base_url(live_server):
-    """Override pytest-playwright's base_url so tests hit our live server."""
     return live_server
 
 
 @pytest.fixture
 def registered_user(live_server):
-    """Create a fresh user in the live server and return matric + password."""
     import uuid
     matric = f"E2E/{uuid.uuid4().hex[:8].upper()}"
     httpx.post(

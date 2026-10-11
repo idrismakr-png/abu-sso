@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
+from app.models.user import User
 from app.schemas.user import Token, UserCreate, UserLogin, UserRead
 from app.services.user_service import authenticate_user, create_user
 from app.utils.jwt import create_access_token, get_current_user
@@ -12,26 +14,51 @@ router = APIRouter(
 )
 
 
-@router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=UserRead, status_code=201)
 def register(payload: UserCreate, db: Session = Depends(get_db)):
-    """Register a new user account.
+    """Register a new user.
 
-    NOTE: in production this endpoint is disabled for the public —
-    accounts are created by an administrator via POST /admin/users.
-    It remains open here so the API can be bootstrapped and tested.
+    Bootstrap pattern:
+    - If the database is EMPTY, the first user is created as an admin.
+      This lets a fresh deployment be set up without an existing admin.
+    - Otherwise, public registration is DISABLED (403) unless the
+      `ALLOW_PUBLIC_REGISTRATION` setting is true (used in tests).
+      Real users must be created by an admin via POST /admin/users.
     """
-    try:
+    existing_count = db.query(User).count()
+
+    if existing_count == 0:
+        # Bootstrap: first user is always an admin.
         user = create_user(
             db,
             email=payload.email,
             password=payload.password,
             matric_no=payload.matric_no,
             full_name=payload.full_name,
-            role=payload.role,
+            role="admin",
         )
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    return user
+        return user
+
+    if settings.allow_public_registration:
+        # Test / development mode: public registration allowed.
+        try:
+            user = create_user(
+                db,
+                email=payload.email,
+                password=payload.password,
+                matric_no=payload.matric_no,
+                full_name=payload.full_name,
+                role=payload.role,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        return user
+
+    # Production: public registration closed after bootstrap.
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Public registration is disabled. Contact ABU ICT for account creation.",
+    )
 
 
 @router.post("/login", response_model=Token)

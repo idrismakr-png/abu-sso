@@ -8,13 +8,18 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = True
 
-    # JWT settings (used later for authentication)
+    # JWT settings
     jwt_secret: str = "change-me-in-production-with-a-much-longer-key-please-min-32-bytes"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
 
     # Database
     database_url: str = "sqlite:///./abu_sso.db"
+
+    # Registration policy
+    # In production: only the very first user can self-register (bootstrap admin).
+    # In tests: set to true so test suites can create users freely.
+    allow_public_registration: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",
