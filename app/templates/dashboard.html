@@ -96,9 +96,17 @@ async function api(path) {
 }
 
 function wireServiceLinks() {
-    // Mock services run locally on separate ports.
-    // In production these would be hosted subdomains (e.g., portal.abu.edu.ng).
-    const services = {
+    // Auto-detect environment: local vs Render production
+    const isProd = window.location.hostname.includes("onrender.com");
+
+    const services = isProd ? {
+        "link-portal":  "https://abu-sso-portal.onrender.com",
+        "link-lms":     "https://abu-sso-lms.onrender.com",
+        "link-library": "https://abu-sso-library.onrender.com",
+        "link-hostel":  "https://abu-sso-hostel.onrender.com",
+        "link-wifi":    "https://abu-sso-wifi.onrender.com",
+        "link-results": "https://abu-sso-results.onrender.com",
+    } : {
         "link-portal":  "http://127.0.0.1:4001",
         "link-lms":     "http://127.0.0.1:4002",
         "link-library": "http://127.0.0.1:4003",
@@ -106,6 +114,7 @@ function wireServiceLinks() {
         "link-wifi":    "http://127.0.0.1:4005",
         "link-results": "http://127.0.0.1:4006",
     };
+
     for (const [id, baseUrl] of Object.entries(services)) {
         const el = document.getElementById(id);
         if (el) {
