@@ -53,4 +53,4 @@ def test_student_cannot_access_admin_page(page: Page, base_url: str, registered_
     admin_btn = page.locator("#admin-link")
     expect(admin_btn).to_be_hidden()
     page.goto(f"{base_url}/admin")
-    page.wait_for_url(re.compile(r"/dashboard"), timeout=5_000)
+    page.wait_for_url(re.compile(r"/dashboard"), timeout=5_000)cmd /c dir /b tests\e2e

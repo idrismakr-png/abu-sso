@@ -40,26 +40,37 @@
 
 <div class="card">
     <h2>Campus Services</h2>
+    <p style="font-size:13px; color:#777; margin-bottom:14px;">
+        One login, six services. Click any card to open — no second password.
+    </p>
     <div class="grid">
         <a class="service-card" id="link-portal" href="#">
             <h3>Student Portal</h3>
-            <p>Course registration & results</p>
+            <p>Course registration & enrollment</p>
         </a>
         <a class="service-card" id="link-lms" href="#">
             <h3>LMS (Moodle)</h3>
             <p>Lectures, assignments, quizzes</p>
         </a>
+        <a class="service-card" id="link-results" href="#">
+            <h3>Result Checker</h3>
+            <p>Semester results & GPA</p>
+        </a>
         <a class="service-card" id="link-library" href="#">
             <h3>Library</h3>
             <p>Borrow books, pay fines</p>
         </a>
-        <div class="service-card" style="opacity:0.55;">
+        <a class="service-card" id="link-hostel" href="#">
             <h3>Hostel</h3>
             <p>Room booking & gate access</p>
-        </div>
+        </a>
+        <a class="service-card" id="link-wifi" href="#">
+            <h3>Campus Wi-Fi</h3>
+            <p>Network access & devices</p>
+        </a>
     </div>
     <p style="font-size:13px; color:#777; margin-top:14px;">
-        💡 Clicking a service opens it in a new tab — already authenticated via your ABU-SSO login.
+        💡 All these services trust your ABU-SSO login — one identity, many apps.
     </p>
 </div>
 
@@ -91,6 +102,9 @@ function wireServiceLinks() {
         "link-portal":  "http://127.0.0.1:4001",
         "link-lms":     "http://127.0.0.1:4002",
         "link-library": "http://127.0.0.1:4003",
+        "link-hostel":  "http://127.0.0.1:4004",
+        "link-wifi":    "http://127.0.0.1:4005",
+        "link-results": "http://127.0.0.1:4006",
     };
     for (const [id, baseUrl] of Object.entries(services)) {
         const el = document.getElementById(id);
