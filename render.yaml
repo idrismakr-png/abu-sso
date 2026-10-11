@@ -1,4 +1,5 @@
 services:
+  # ============== Main App ==============
   - type: web
     name: abu-sso
     runtime: python
@@ -9,6 +10,85 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: DATABASE_URL
-        sync: false  # We'll set this manually in the Render dashboard
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+
+  # ============== Mock Services ==============
+  - type: web
+    name: abu-sso-portal
+    runtime: python
+    plan: free
+    rootDir: mock-services/portal
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: IDP_URL
+        value: https://abu-sso.onrender.com
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+
+  - type: web
+    name: abu-sso-lms
+    runtime: python
+    plan: free
+    rootDir: mock-services/lms
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: IDP_URL
+        value: https://abu-sso.onrender.com
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+
+  - type: web
+    name: abu-sso-library
+    runtime: python
+    plan: free
+    rootDir: mock-services/library
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: IDP_URL
+        value: https://abu-sso.onrender.com
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+
+  - type: web
+    name: abu-sso-hostel
+    runtime: python
+    plan: free
+    rootDir: mock-services/hostel
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: IDP_URL
+        value: https://abu-sso.onrender.com
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+
+  - type: web
+    name: abu-sso-wifi
+    runtime: python
+    plan: free
+    rootDir: mock-services/wifi
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: IDP_URL
+        value: https://abu-sso.onrender.com
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+
+  - type: web
+    name: abu-sso-results
+    runtime: python
+    plan: free
+    rootDir: mock-services/results
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: IDP_URL
+        value: https://abu-sso.onrender.com
       - key: PYTHON_VERSION
         value: "3.12.0"
