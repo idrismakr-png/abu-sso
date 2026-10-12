@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for ABU-SSO — with full diagnostics."""
+"""Shared pytest fixtures for ABU-SSO tests (unit + service + integration + E2E)."""
 import os
 import subprocess
 import sys
@@ -20,13 +20,11 @@ if str(ROOT) not in sys.path:
 os.environ["ALLOW_PUBLIC_REGISTRATION"] = "true"
 os.environ["JWT_SECRET"] = "test-secret-key-with-at-least-32-bytes-length-ok"
 
-# ============ Import app modules ============
-import app.database as db_module
-from app.database import Base, get_db
-from app.models import Transaction, User, Wallet
-from app.main import app
+import app.database as db_module  # noqa: E402
+from app.database import Base, get_db  # noqa: E402
+from app.models import Transaction, User, Wallet  # noqa: E402,F401
+from app.main import app  # noqa: E402
 
-# ============ One test engine, shared by EVERYTHING ============
 test_engine = create_engine(
     "sqlite://",
     connect_args={"check_same_thread": False},
@@ -34,11 +32,8 @@ test_engine = create_engine(
 )
 TestSession = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
-# Create tables on the shared engine.
 Base.metadata.create_all(bind=test_engine)
 
-# Patch the app's module-level engine + session factory.
-# Anything that calls `SessionLocal()` from app.database now uses the test engine.
 db_module.engine = test_engine
 db_module.SessionLocal = TestSession
 
@@ -51,37 +46,11 @@ def _override_get_db():
         s.close()
 
 
-# Also override the FastAPI dependency (belt and braces).
 app.dependency_overrides[get_db] = _override_get_db
 
 
-# --- Diagnostic helper (called by fixtures) ---
-def _tables_in_engine(engine):
-    import sqlite3
-    with engine.connect() as conn:
-        cursor = conn.connection.cursor()
-        rows = cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
-        return [r[0] for r in rows]
-
-
-print(f"\n[conftest] test_engine id={id(test_engine)} url={test_engine.url}")
-print(f"[conftest] db_module.engine is test_engine? {db_module.engine is test_engine}")
-print(f"[conftest] db_module.SessionLocal is TestSession? {db_module.SessionLocal is TestSession}")
-print(f"[conftest] Tables right after create_all: {_tables_in_engine(test_engine)}\n")
-
-
-# ============ Fixtures ============
-
 @pytest.fixture(autouse=True)
-def diag_and_cleanup():
-    """Before each test: print tables. After: clean rows."""
-    tables_before = _tables_in_engine(test_engine)
-    if "users" not in tables_before:
-        print(f"\n[!] tables missing before test: {tables_before}")
-        Base.metadata.create_all(bind=test_engine)
-        print(f"[!] recreated. now: {_tables_in_engine(test_engine)}")
+def clean_tables():
     yield
     s = TestSession()
     try:
@@ -110,14 +79,12 @@ def db():
         s.close()
 
 
-# ============ E2E fixtures ============
-
 E2E_PORT = 8001
 E2E_BASE_URL = f"http://127.0.0.1:{E2E_PORT}"
 
 
 @pytest.fixture(scope="session")
-def live_server():
+def e2e_live_server():
     tmp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     tmp_db.close()
 
@@ -136,16 +103,22 @@ def live_server():
         stderr=subprocess.STDOUT,
     )
 
-    for _ in range(60):
-        try:
-            r = httpx.get(f"{E2E_BASE_URL}/health", timeout=1.0)
-            if r.status_code == 200:
-                break
-        except Exception:
-            time.sleep(0.5)
-    else:
+    # trust_env=False ignores HTTP_PROXY/HTTPS_PROXY env vars, which on
+    # Windows can hijack 127.0.0.1 traffic and cause silent timeouts.
+    ready = False
+    with httpx.Client(trust_env=False, timeout=1.0) as client:
+        for _ in range(60):
+            try:
+                r = client.get(f"{E2E_BASE_URL}/health")
+                if r.status_code == 200:
+                    ready = True
+                    break
+            except Exception:
+                time.sleep(0.5)
+
+    if not ready:
         proc.terminate()
-        pytest.fail("Live server did not start within 30 seconds")
+        pytest.fail("E2E live server did not start within 30 seconds")
 
     yield E2E_BASE_URL
 
@@ -161,23 +134,23 @@ def live_server():
 
 
 @pytest.fixture(scope="session")
-def base_url(live_server):
-    return live_server
+def e2e_base_url(e2e_live_server):
+    return e2e_live_server
 
 
 @pytest.fixture
-def registered_user(live_server):
+def registered_user(e2e_live_server):
     import uuid
     matric = f"E2E/{uuid.uuid4().hex[:8].upper()}"
-    httpx.post(
-        f"{live_server}/auth/register",
-        json={
-            "email": f"{matric.replace('/', '_').lower()}@abu.edu.ng",
-            "password": "secret123",
-            "full_name": "E2E Tester",
-            "role": "student",
-            "matric_no": matric,
-        },
-        timeout=5.0,
-    )
+    with httpx.Client(trust_env=False, timeout=5.0) as client:
+        client.post(
+            f"{e2e_live_server}/auth/register",
+            json={
+                "email": f"{matric.replace('/', '_').lower()}@abu.edu.ng",
+                "password": "secret123",
+                "full_name": "E2E Tester",
+                "role": "student",
+                "matric_no": matric,
+            },
+        )
     return {"matric_no": matric, "password": "secret123"}

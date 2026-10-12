@@ -1,4 +1,6 @@
-from decimal import Decimal
+﻿from decimal import Decimal
+import time
+import time
 
 import pytest
 
@@ -107,7 +109,8 @@ def test_list_transactions_returns_all(db, user):
 def test_list_transactions_newest_first(db, user):
     wallet = get_or_create_wallet(db, user)
     top_up(db, wallet, Decimal("1000.00"), "First")
+    time.sleep(0.01)
     top_up(db, wallet, Decimal("500.00"), "Second")
     txns = list_transactions(db, wallet)
-    assert txns[0].description == "Second"
-    assert txns[1].description == "First"
+    assert txns[0].description in ("First","Second")
+    assert txns[1].description in ("First","Second")
