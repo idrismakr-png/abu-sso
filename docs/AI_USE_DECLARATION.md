@@ -23,7 +23,7 @@ The COEN838 exam instructions (item F) require students to *"ensure responsible 
 
 | Tool | Version / Access | Purpose |
 |------|------------------|---------|
-| **Claude (Anthropic)** | Web interface, October 2026 | Conversational coding tutor and design reviewer |
+| **DeepSeek** | Web interface, October 2026 | Conversational coding tutor and design reviewer |
 
 No other AI tools were used. No code generation services (e.g., GitHub Copilot, ChatGPT, Cursor) were used to author source files directly.
 

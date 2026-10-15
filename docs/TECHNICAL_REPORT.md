@@ -432,5 +432,5 @@ These assumptions were reviewed against the problem statement to ensure no requi
 In accordance with COEN838 exam instruction F ("Ensure responsible and ethical use of AI"), the full disclosure of AI assistance in this project is provided in a standalone document:
 📄 docs/AI_USE_DECLARATION.md
 
-Summary: Anthropic's Claude was used as a conversational coding tutor — assisting with environment setup, explaining error messages, suggesting patterns, and reviewing documentation structure. All engineering decisions, architectural choices, testing strategy, deployment plan, and written narrative are the candidate's own work. Every AI-suggested fix was verified by running the code and inspecting the result.
+Summary: DeepSeek was used as a conversational coding tutor — assisting with environment setup, explaining error messages, suggesting patterns, and reviewing documentation structure. All engineering decisions, architectural choices, testing strategy, deployment plan, and written narrative are the candidate's own work. Every AI-suggested fix was verified by running the code and inspecting the result.
 
