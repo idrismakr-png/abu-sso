@@ -163,7 +163,7 @@ Metric	Value
 API Endpoints (IdP)	17
 Distributed SSO Services	6
 Functional Requirements	19/19 implemented
-Automated Tests	84 passing
+Automated Tests   121 passing
 Line Coverage	96%
 SAST Findings	0
 CI Runtime	~50s (both jobs)

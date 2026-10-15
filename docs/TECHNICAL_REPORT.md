@@ -328,7 +328,7 @@ Metric	Result
 Working prototype	✅ Deployed at https://abu-sso.onrender.com
 Functional Requirements implemented	19 / 19
 Distributed SSO services	6 (Portal, LMS, Library, Hostel, Wi-Fi, Results)
-Automated tests	84 / 84 passing (79 fast + 5 E2E)
+Automated tests    121 / 121 passing (116 fast + 5 E2E)
 Line coverage	96%
 SAST findings	0 (Bandit)
 CI status	✅ Green
