@@ -14,10 +14,10 @@
 
 | Req ID | Requirement (short) | Design Artefact | Implementation | Test(s) |
 |--------|---------------------|-----------------|----------------|---------|
-| **FR-01** | Register with email/password/name/role/matric | UC-01, SQ-Login (partial) | `app/routers/auth.py` (`/auth/register`), `app/services/user_service.py` (`create_user`), `app/schemas/user.py` (`UserCreate`) | `test_api_integration.py::test_register_returns_201_and_user` |
-| **FR-02** | Reject duplicate email | UC-01 | `app/services/user_service.py` (`create_user` raises `ValueError`) | `test_api_integration.py::test_register_duplicate_email_returns_400`, `test_user_service.py::test_create_user_duplicate_email_raises` |
+| **FR-01** | Bootstrap-only registration: first user becomes admin; requires email, password, matric, name, role | UC-01, SQ-Login (partial) | `app/routers/auth.py` (`/auth/register`), `app/services/user_service.py` (`create_user`), `app/schemas/user.py` (`UserCreate`) | `test_api_integration.py::test_register_returns_201_and_user` |
+| **FR-02** | Reject duplicate email OR duplicate matric | UC-01 | `app/services/user_service.py` (`create_user` raises `ValueError`) | `test_api_integration.py::test_register_duplicate_email_returns_400`, `test_user_service.py::test_create_user_duplicate_email_raises` |
 | **FR-03** | Hash passwords with bcrypt | CL-User | `app/utils/security.py` (`hash_password`) | `test_security.py::test_hash_password_returns_string`, `test_hash_password_is_not_plaintext`, `test_hash_password_same_input_different_output`, `test_user_service.py::test_create_user_hashes_password` |
-| **FR-04** | Login with email + password | UC-02, SQ-Login | `app/routers/auth.py` (`/auth/login`), `app/services/user_service.py` (`authenticate_user`) | `test_api_integration.py::test_login_returns_token`, `test_login_wrong_password_returns_401`, `test_login_unknown_user_returns_401`, `test_user_service.py::test_authenticate_user_correct_password`, `test_authenticate_user_wrong_password`, `test_authenticate_user_missing_user` |
+| **FR-04** | Login with matric / staff number + password | UC-02, SQ-Login | `app/routers/auth.py` (`/auth/login`), `app/services/user_service.py` (`authenticate_user`) | `test_api_integration.py::test_login_returns_token`, `test_login_wrong_password_returns_401`, `test_login_unknown_user_returns_401`, `test_user_service.py::test_authenticate_user_correct_password`, `test_authenticate_user_wrong_password`, `test_authenticate_user_missing_user` |
 | **FR-05** | Issue signed JWT (15 min exp) | SQ-Login | `app/utils/jwt.py` (`create_access_token`), `app/config.py` | `test_api_integration.py::test_login_returns_token` |
 | **FR-06** | Retrieve own profile via `/auth/me` | UC-03, SQ-Login | `app/routers/auth.py` (`/auth/me`), `app/utils/jwt.py` (`get_current_user`) | `test_api_integration.py::test_me_with_valid_token_returns_user`, `test_me_without_token_returns_401`, `test_me_with_bad_token_returns_401` |
 | **FR-07** | Generate QR digital ID card | UC-04, CL-User | `app/routers/id_card.py`, `app/services/qr_service.py` | `test_api_integration.py::test_id_card_returns_qr_data_url`, `test_id_card_requires_auth` |
@@ -36,7 +36,7 @@
 
 | Req ID | NFR | Design / Config | Verification |
 |--------|-----|-----------------|--------------|
-| **NFR-01** | p95 login ≤ 500 ms | FastAPI async, indexed email lookup (`app/models/user.py`) | Manual timing; benchmarkable with `wrk` or `locust` |
+| **NFR-01** | p95 login ≤ 500 ms | FastAPI async, indexed matric lookup (`app/models/user.py`) | Manual timing; benchmarkable with `wrk` or `locust` |
 | **NFR-02** | bcrypt cost ≥ 12 | `app/utils/security.py` (`bcrypt.gensalt()`) | `test_security.py` suite |
 | **NFR-03** | Reject unauthorized requests | `app/utils/jwt.py` (`get_current_user`) | `test_api_integration.py::test_me_without_token_returns_401`, `test_me_with_bad_token_returns_401`, `test_id_card_requires_auth`, `test_wallet_requires_auth` |
 | **NFR-04** | JWT HS256, ≥ 32-byte secret | `app/config.py` (`jwt_secret`, `jwt_algorithm`) | PyJWT warning-free run (verified after key-length fix) |

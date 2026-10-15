@@ -25,7 +25,7 @@ ABU-SSO is a **modular monolith** structured as a **layered architecture**, orga
 
 The modular monolith was chosen because the project is built by a single developer within a course timeframe, but the **service boundaries are already drawn** so any router (`auth`, `wallet`, `id_card`, `admin`) could be extracted into its own microservice without rewriting business logic.
 
-**A real distributed layer was subsequently added** — three independent mock services (Portal, LMS, Library) that trust ABU-SSO as their identity provider. See Section 8.
+**A real distributed layer was subsequently added** — six independent mock services (Portal, LMS, Library, Hostel, Wi-Fi, Result Checker) that trust ABU-SSO as their identity provider. See Section 8.
 
 ### 1.2 Layer Responsibilities
 
@@ -248,7 +248,7 @@ Client receives 201 Created + transaction JSON
 
 ## 8. Distributed SSO Architecture (Mock Services)
 
-To demonstrate that ABU-SSO is genuinely a **distributed, service-oriented system** (not merely a login page), three independent mock services were built that trust ABU-SSO as their identity provider.
+To demonstrate that ABU-SSO is genuinely a **distributed, service-oriented system** (not merely a login page), six independent mock services were built that trust ABU-SSO as their identity provider.
 
 ### 8.1 Why Three Services?
 
@@ -326,7 +326,7 @@ Building three separate services that **independently verify the SSO token** pro
 
 | Rubric line | How the mock services satisfy it |
 |-------------|----------------------------------|
-| "distributed/service-oriented solution" | Three independent services on distinct ports, each a separate OS process |
+| "distributed/service-oriented solution" | Six independent services on distinct ports, each a separate OS process |
 | "inter-component communication pattern" | Synchronous REST; token passed via HTTP header; documented above |
 | "scalability" | Stateless services, horizontally scalable; IdP bottleneck documented with mitigations |
 | "resilience" | Fail-secure when IdP unreachable; failure isolation across services |
