@@ -3,7 +3,7 @@
 [![CI](https://github.com/idrismakr-png/abu-sso/actions/workflows/ci.yml/badge.svg)](https://github.com/idrismakr-png/abu-sso/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.142-009688)
-![Tests](https://img.shields.io/badge/tests-84%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-121%20passing-brightgreen)
 ![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen)
 ![SAST](https://img.shields.io/badge/bandit-0%20findings-brightgreen)
 ![Live](https://img.shields.io/badge/live-abu--sso.onrender.com-success)
@@ -57,7 +57,7 @@ A unified authentication and campus services platform for **Ahmadu Bello Univers
 - 👑 **Admin Panel** — create users, change roles, activate/deactivate, top up wallets, view stats
 - 🚀 **Six Distributed SSO Services** — Portal, LMS, Library, Hostel, Wi-Fi, Result Checker
 - 📖 **Auto-Generated API Docs** — OpenAPI 3.0 at `/docs`
-- ✅ **84 Automated Tests** — 4 layers (unit, service, integration, E2E)
+- ✅ **121 Automated Tests** — 4 layers (unit, service, integration, E2E)
 - 🤖 **Continuous Integration** — GitHub Actions on every push
 - 🛡️ **SAST Clean** — 0 findings (Bandit)
 - ☁️ **Deployed** — Render (7 web services) + Neon (PostgreSQL)
@@ -106,7 +106,7 @@ pytest tests/e2e -m e2e
 
 # With coverage
 pytest --cov=app --cov-report=term-missing
-Expected: 79 fast tests + 5 E2E tests = 84 passing, 96% line coverage.
+Expected: 116 fast tests + 5 E2E tests = 121 passing, 96% line coverage.
 
 📚 Documentation
 All engineering artefacts live in docs/:

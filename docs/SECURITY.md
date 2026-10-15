@@ -203,7 +203,7 @@ test_admin_endpoints_forbid_students	Students get 403 on admin endpoints
 test_student_cannot_create_users	RBAC blocks privilege escalation
 test_deactivated_user_cannot_log_in	Deactivated accounts rejected
 test_student_cannot_access_admin_page (E2E)	RBAC enforced at UI level
-Total security-relevant tests: 17 — all passing.
+Total security-relevant tests: 54 — all passing.
 
 5.3 Dependency Audit
 All dependencies pinned in requirements.txt. A future release will add pip-audit to CI:

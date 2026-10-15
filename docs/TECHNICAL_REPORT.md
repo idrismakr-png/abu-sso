@@ -14,7 +14,7 @@
 
 ## Abstract
 
-Nigerian university students routinely juggle multiple credentials across isolated systems (student portal, LMS, Wi-Fi, library, hostel), leading to password fatigue, forgotten logins, and shared accounts. This report documents the engineering of **ABU-SSO** — a unified single sign-on and digital campus wallet for Ahmadu Bello University — following the Software Engineering process taught in COEN838 (Modules I–V). The system is built with Python 3.12, FastAPI, SQLAlchemy, and JWT-based authentication with role-based access control. It was delivered in twelve iterative increments, is covered by **84 automated tests (79 fast + 5 E2E) achieving 96% line coverage**, runs a green CI pipeline on every push, has passed a Bandit SAST scan with zero findings, and is deployed live on Render (7 web services) with a Neon PostgreSQL database. The system includes six independent SSO services that trust ABU-SSO as their identity provider, demonstrating real distributed single sign-on. The report closes with a risk register, maintenance plan, and reflections.
+Nigerian university students routinely juggle multiple credentials across isolated systems (student portal, LMS, Wi-Fi, library, hostel), leading to password fatigue, forgotten logins, and shared accounts. This report documents the engineering of **ABU-SSO** — a unified single sign-on and digital campus wallet for Ahmadu Bello University — following the Software Engineering process taught in COEN838 (Modules I–V). The system is built with Python 3.12, FastAPI, SQLAlchemy, and JWT-based authentication with role-based access control. It was delivered in twelve iterative increments, is covered by **121 automated tests (116 fast + 5 E2E) achieving 96% line coverage**, runs a green CI pipeline on every push, has passed a Bandit SAST scan with zero findings, and is deployed live on Render (7 web services) with a Neon PostgreSQL database. The system includes six independent SSO services that trust ABU-SSO as their identity provider, demonstrating real distributed single sign-on. The report closes with a risk register, maintenance plan, and reflections.
 
 ---
 
@@ -74,7 +74,7 @@ An **iterative and incremental Agile** process was used because the problem stat
 | 9 | Web UI (login + dashboard) |
 | 10 | 53 tests + GitHub Actions CI |
 | 11 | RBAC + Admin panel + admin create-user + cloud deployment |
-| 12 | Six distributed mock SSO services + 84 tests with E2E |
+| 12 | Six distributed mock SSO services + 121 tests with E2E |
 
 **Why not Waterfall?** Wallet, admin, and distributed SSO features were added *after* the auth prototype was working — an upfront plan could not have anticipated the exact wallet schema, the admin workflow, or the number of downstream services. Iteration allowed course correction.
 

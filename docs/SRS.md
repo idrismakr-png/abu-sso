@@ -388,7 +388,7 @@ Four-layer pyramid: unit → service → integration → system (E2E).
 | Service | 100% of services | ✅ |
 | Integration | All HTTP routes | ✅ |
 | System (E2E) | 5 critical user journeys | ✅ |
-| **Total tests** | — | **84 passing** |
+| **Total tests** | — | **121 passing** |
 
 ### 7.3 Test Environment
 

@@ -172,7 +172,7 @@ The dashboard auto-detects localhost vs. production and wires the cards accordin
 B.8 Run the Tests
 pytest -q                      # 79 fast tests
 pytest tests/e2e -m e2e        # 5 E2E tests
-Expected: 84 passed.
+Expected: 121 passed.
 
 B.9 Optional — Coverage Report
 

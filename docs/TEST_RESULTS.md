@@ -12,9 +12,9 @@
 
 | Metric | Value |
 |--------|-------|
-| Total tests | **84** |
-| Tests passing | **84 (100%)** |
-| Fast tests (unit + service + integration) | 79 |
+| Total tests | **121** |
+| Tests passing | **121 (100%)** |
+| Fast tests (unit + service + integration + authz matrix) | 116 |
 | System (E2E) tests | 5 |
 | Line coverage | **96%** (473 statements, 19 missed) |
 | SAST findings (Bandit) | **0** |
