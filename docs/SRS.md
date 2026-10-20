@@ -1,7 +1,7 @@
 # Software Requirements Specification (SRS)
 ## ABU-SSO: Unified Single Sign-On & Digital Campus Wallet
 
-**Course:** COEN838 — Advanced Software Engineering  
+**Course:** COEN838 - Advanced Software Engineering  
 **Department:** Computer Engineering, Ahmadu Bello University, Zaria  
 **Student:** Idris Muhammad Abubakar  
 **Matric No:** P25EGCP9003  
@@ -20,12 +20,12 @@ This Software Requirements Specification (SRS) defines the functional and non-fu
 
 **In scope:**
 - Central authentication service issuing JSON Web Tokens (JWT) for all ABU campus applications.
-- **Matric / staff number-based login** — students and staff use their official university number as their identifier.
-- **Admin-controlled account creation** — after the first (bootstrap) admin, no public self-registration is permitted.
+- **Matric / staff number-based login** - students and staff use their official university number as their identifier.
+- **Admin-controlled account creation** - after the first (bootstrap) admin, no public self-registration is permitted.
 - Digital ID card generation with QR code for physical access points (library, hostel).
 - Campus wallet allowing top-up, payments, and transaction history.
 - A web-based dashboard acting as the launchpad for connected campus services.
-- **Six distributed Single Sign-On services** — Student Portal, LMS, Library, Hostel, Wi-Fi, Result Checker — each a separate application that independently verifies the ABU-SSO JWT.
+- **Six distributed Single Sign-On services** - Student Portal, LMS, Library, Hostel, Wi-Fi, Result Checker — each a separate application that independently verifies the ABU-SSO JWT.
 - Role-Based Access Control (student / staff / admin) enforced by middleware.
 
 **Out of scope (for this prototype):**
@@ -38,12 +38,12 @@ This Software Requirements Specification (SRS) defines the functional and non-fu
 
 | Term | Meaning |
 |------|---------|
-| **SSO** | Single Sign-On — one login grants access to multiple independent services |
-| **JWT** | JSON Web Token — a signed, stateless authentication token |
+| **SSO** | Single Sign-On - one login grants access to multiple independent services |
+| **JWT** | JSON Web Token - a signed, stateless authentication token |
 | **bcrypt** | A password hashing algorithm designed for resistance to brute-force attacks |
 | **RBAC** | Role-Based Access Control |
-| **IdP** | Identity Provider — the service that authenticates users and issues tokens |
-| **Matric** | Matriculation number — the unique identifier issued to every university student |
+| **IdP** | Identity Provider - the service that authenticates users and issues tokens |
+| **Matric** | Matriculation number - the unique identifier issued to every university student |
 | **Bootstrap** | The first-ever user registration on a fresh deployment, automatically granted admin role |
 | **SRS** | Software Requirements Specification |
 | **NFR** | Non-Functional Requirement |
@@ -60,12 +60,12 @@ This Software Requirements Specification (SRS) defines the functional and non-fu
 
 ### 1.5 Overview of This Document
 
-- **Section 2** — General Overview: perspective, functions, user classes.
-- **Section 3** — Specific Requirements: Functional (FRs), Non-Functional (NFRs), Interface.
-- **Section 4** — From User Needs to Technical Specifications: elicitation and UML models.
-- **Section 5** — Software Life Cycle and methodology.
-- **Section 6** — Feasibility and considerations.
-- **Section 7** — Testability and verification.
+- **Section 2** - General Overview: perspective, functions, user classes.
+- **Section 3** - Specific Requirements: Functional (FRs), Non-Functional (NFRs), Interface.
+- **Section 4** - From User Needs to Technical Specifications: elicitation and UML models.
+- **Section 5** - Software Life Cycle and methodology.
+- **Section 6** - Feasibility and considerations.
+- **Section 7** - Testability and verification.
 
 ---
 
@@ -129,11 +129,11 @@ ABU-SSO is a **distributed, service-oriented system** in which a central identit
 ### 2.5 Design and Implementation Constraints
 
 - **Technology stack locked to Python 3.12 + FastAPI.**
-- **JWT-based authentication** — stateless, no server-side sessions.
-- **Password hashing with bcrypt** — plain-text storage prohibited.
-- **Matric-number login** — no email-based authentication.
-- **Bootstrap-only public registration** — after the first admin account exists, `/auth/register` returns HTTP 403.
-- **Admin-only account creation** — new students/staff are created by administrators via `POST /admin/users`.
+- **JWT-based authentication** - stateless, no server-side sessions.
+- **Password hashing with bcrypt** - plain-text storage prohibited.
+- **Matric-number login** - no email-based authentication.
+- **Bootstrap-only public registration** - after the first admin account exists, `/auth/register` returns HTTP 403.
+- **Admin-only account creation** - new students/staff are created by administrators via `POST /admin/users`.
 - **Source code must be managed in Git and pushed to a public GitHub repository.**
 - **Automated tests must run on every push via CI.**
 
@@ -206,10 +206,10 @@ Requirements prioritised using the MoSCoW method:
 
 #### 3.3.1 User Interfaces
 
-- **Login page (`/login`)** — matric/staff number + password; error messages in red; success redirects to `/dashboard`.
-- **Dashboard (`/dashboard`)** — welcome message, wallet balance, transaction list, QR ID card, and **six clickable service cards**.
-- **Admin page (`/admin`)** — visible only to `admin` role; user list, create-user form, role changer, activate/deactivate buttons, wallet top-up form, system statistics.
-- **Swagger UI (`/docs`)** — auto-generated interactive API documentation.
+- **Login page (`/login`)** - matric/staff number + password; error messages in red; success redirects to `/dashboard`.
+- **Dashboard (`/dashboard`)** - welcome message, wallet balance, transaction list, QR ID card, and **six clickable service cards**.
+- **Admin page (`/admin`)** - visible only to `admin` role; user list, create-user form, role changer, activate/deactivate buttons, wallet top-up form, system statistics.
+- **Swagger UI (`/docs`)** - auto-generated interactive API documentation.
 
 #### 3.3.2 Software Interfaces
 
@@ -388,7 +388,7 @@ Four-layer pyramid: unit → service → integration → system (E2E).
 | Service | 100% of services | ✅ |
 | Integration | All HTTP routes | ✅ |
 | System (E2E) | 5 critical user journeys | ✅ |
-| **Total tests** | — | **121 passing** |
+| **Total tests** | - | **121 passing** |
 
 ### 7.3 Test Environment
 

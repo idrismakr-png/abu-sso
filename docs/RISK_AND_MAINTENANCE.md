@@ -1,7 +1,7 @@
 # Risk Register & Maintenance Plan
 ## ABU-SSO: Unified Single Sign-On & Digital Campus Wallet
 
-**Course:** COEN838 — Advanced Software Engineering  
+**Course:** COEN838 - Advanced Software Engineering  
 **Student:** Idris Muhammad Abubakar  
 **Matric No:** P25EGCP9003  
 

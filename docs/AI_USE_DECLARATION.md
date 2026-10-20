@@ -1,7 +1,7 @@
 # AI Use Declaration
 ## ABU-SSO: Unified Single Sign-On & Digital Campus Wallet
 
-**Course:** COEN838 — Advanced Software Engineering  
+**Course:** COEN838 - Advanced Software Engineering  
 **Student:** Idris Muhammad Abubakar  
 **Matric No:** P25EGCP9003  
 **Date:** October 2026  
@@ -100,7 +100,7 @@ I, **Idris Muhammad Abubakar (P25EGCP9003)**, declare that:
 3. I have verified every component of the submitted system and can defend it orally.
 4. This declaration is made in accordance with COEN838 exam instruction F.
 
-**Signature:** _______________________  
+**Signature:** ____Idris Muhammad Abubakar___________________  
 **Date:** October 2026
 
 ---

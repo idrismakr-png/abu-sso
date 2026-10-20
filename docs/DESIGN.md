@@ -29,7 +29,6 @@ The modular monolith was chosen because the project is built by a single develop
 
 ### 1.2 Layer Responsibilities
 
-
 **Rule enforced:** each layer only talks to the one directly below it. Routers never touch the database directly — they call services.
 
 ### 1.3 Inter-Component Communication
@@ -146,10 +145,10 @@ See `docs/diagrams/class_model.png`.
 
 ### 3.3 Design Decisions
 
-- **UUIDs instead of integers** for primary keys — safe to expose in URLs, work identically in SQLite and PostgreSQL.
-- **`Numeric(10,2)` for money** — avoids floating-point rounding errors.
-- **Wallet created lazily** — users who never use the wallet don't consume a row.
-- **Cascade delete** — deleting a wallet removes its transactions automatically.
+- **UUIDs instead of integers** for primary keys - safe to expose in URLs, work identically in SQLite and PostgreSQL.
+- **`Numeric(10,2)` for money** - avoids floating-point rounding errors.
+- **Wallet created lazily** - users who never use the wallet don't consume a row.
+- **Cascade delete** - deleting a wallet removes its transactions automatically.
 
 ---
 
@@ -183,7 +182,6 @@ Router (wallet.py: pay_from_wallet)
 │
 ▼
 Client receives 201 Created + transaction JSON
-
 
 ---
 

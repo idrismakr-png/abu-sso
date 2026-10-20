@@ -1,7 +1,7 @@
 # Technical Report
 ## ABU-SSO: Unified Single Sign-On & Digital Campus Wallet
 
-**Course:** COEN838 — Advanced Software Engineering  
+**Course:** COEN838 - Advanced Software Engineering  
 **Department:** Computer Engineering, Ahmadu Bello University, Zaria  
 **Student:** Idris Muhammad Abubakar  
 **Matric No:** P25EGCP9003  
@@ -83,8 +83,8 @@ An **iterative and incremental Agile** process was used because the problem stat
 Requirements were elicited using three techniques:
 
 - **Interviews** with 3 ABU students.
-- **Ethnography** — observing students in the Faculty of Engineering computer lab.
-- **Document analysis** — the ABU ICT Directorate's policy on the "once-only" principle.
+- **Ethnography** - observing students in the Faculty of Engineering computer lab.
+- **Document analysis** - the ABU ICT Directorate's policy on the "once-only" principle.
 
 **19 Functional Requirements** (FR-01 to FR-19) and **13 Non-Functional Requirements** (NFR-01 to NFR-13) are documented in `docs/SRS.md`. Requirements are modelled with:
 
@@ -104,14 +104,14 @@ A **Requirements Traceability Matrix** (`docs/RTM.md`) links every FR to its des
 
 **The distributed layer:**
 - Six independent FastAPI applications, each deployed as its own Render web service.
-- Each service verifies tokens by calling the IdP's `/auth/me` endpoint — no shared session, no shared database.
+- Each service verifies tokens by calling the IdP's `/auth/me` endpoint - no shared session, no shared database.
 - Stateless verification means any service can be scaled independently.
 
 **Inter-component communication:** synchronous REST over HTTP with JWT in the `Authorization: Bearer` header.
 
-**Data model:** three tables — `users`, `wallets`, `transactions`. A user owns 0 or 1 wallet; a wallet owns 0..N transactions.
+**Data model:** three tables - `users`, `wallets`, `transactions`. A user owns 0 or 1 wallet; a wallet owns 0..N transactions.
 
-**Scalability:** stateless JWT means the API can be horizontally scaled behind a load balancer. The database is swappable from SQLite to PostgreSQL by changing the `DATABASE_URL` environment variable — a migration we exercised in the deployment phase.
+**Scalability:** stateless JWT means the API can be horizontally scaled behind a load balancer. The database is swappable from SQLite to PostgreSQL by changing the `DATABASE_URL` environment variable - a migration we exercised in the deployment phase.
 
 ### 2.4 Security Engineering (Module IV)
 
@@ -128,7 +128,7 @@ A **Requirements Traceability Matrix** (`docs/RTM.md`) links every FR to its des
 | **Separation of secrets** | `JWT_SECRET` in `.env` (gitignored); in production, Render auto-generates. |
 | **Cryptographic hygiene** | bcrypt with auto-generated salt; JWT secret ≥ 32 bytes (RFC 7518). |
 
-**Authentication scheme:** HS256 JWT with 15-minute expiry. Tokens contain `sub` (user id), `iat`, and `exp`. Users log in with their **matric / staff number** — not email.
+**Authentication scheme:** HS256 JWT with 15-minute expiry. Tokens contain `sub` (user id), `iat`, and `exp`. Users log in with their **matric / staff number** - not email.
 
 **Authorization scheme:** Role-based access control. Three roles — `student`, `staff`, `admin` — enforced by a reusable FastAPI dependency factory `require_role(*roles)`.
 
@@ -166,7 +166,7 @@ Full details in `docs/TEST_RESULTS.md`.
 Deployed on free-tier cloud services:
 
 - **IdP:** Render web service (Python 3.12, Uvicorn, auto-deploy on push to `main`).
-- **Six SSO services:** Render web services — `abu-sso-portal`, `abu-sso-lms`, `abu-sso-library`, `abu-sso-hostel`, `abu-sso-wifi`, `abu-sso-results`.
+- **Six SSO services:** Render web services - `abu-sso-portal`, `abu-sso-lms`, `abu-sso-library`, `abu-sso-hostel`, `abu-sso-wifi`, `abu-sso-results`.
 - **Database:** Neon (managed PostgreSQL 18, no expiry).
 - **Configuration:** `render.yaml` declares all seven services; `DATABASE_URL` is set as an environment variable pointing to Neon.
 
@@ -380,7 +380,7 @@ RFC 7519 (JWT), RFC 7518 (JWA)
 OWASP Top 10 — 2021
 
 11. Assumptions
-The following assumptions were made in interpreting the exam problem statement (Question 7 — Unified ABU-SSO), as required by exam instruction D.
+The following assumptions were made in interpreting the exam problem statement (Question 7 - Unified ABU-SSO), as required by exam instruction D.
 
 11.1 Scope Assumptions
 #	Assumption	Justification
@@ -400,7 +400,7 @@ A7	Students do not self-register — accounts are created by ICT after admission
 A8	SQLite is sufficient for dev/demo; PostgreSQL for production.	SQLite avoids setup friction; PostgreSQL matches cloud reality.
 A9	JWT secret is delivered via environment variable.	Standard cloud security practice.
 A10	15-minute session expiry is acceptable for the demo.	Refresh tokens are future work.
-A11	QR codes encode only {id, matric_no, role} — no PII.	Data minimisation (NDPR).
+A11	QR codes encode only {id, matric_no, role} - no PII.	Data minimisation (NDPR).
 A12	Mock services verify tokens via the IdP's /auth/me, not locally with the secret.	Simpler, safer, models OIDC UserInfo.
 A13	Network availability exists between browser and cloud.	Standard web assumption.
 
@@ -411,19 +411,19 @@ A15	Horizontal scaling is documented but not exercised.	Prototype scale.
 A16	NDPR audit is not required for the prototype.	No real student PII stored.
 
 11.5 Limitations Explicitly Acknowledged
-No rate limiting on /auth/login — planned via slowapi.
+No rate limiting on /auth/login - planned via slowapi.
 
-No refresh tokens — 15-minute re-login required.
+No refresh tokens - 15-minute re-login required.
 
-No email verification — moot, since email isn't used for authentication.
+No email verification - moot, since email isn't used for authentication.
 
-No audit log table yet — admin actions not persisted to dedicated trail.
+No audit log table yet - admin actions not persisted to dedicated trail.
 
-Mock services are demonstrations — real services would call the same JWT-protected API.
+Mock services are demonstrations - real services would call the same JWT-protected API.
 
-Render free-tier cold starts — first request after idle takes 30–60 s.
+Render free-tier cold starts - first request after idle takes 30–60 s.
 
-Registration is bootstrap-only — matches ABU reality, but means admin access is required to onboard new users.
+Registration is bootstrap-only - matches ABU reality, but means admin access is required to onboard new users.
 
 11.6 Compliance Statement
 These assumptions were reviewed against the problem statement to ensure no requirement was silently dropped. All assumptions are also reflected in docs/SRS.md §2.6 and in the risk register.

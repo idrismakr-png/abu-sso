@@ -1,7 +1,7 @@
 # Design Document
 ## ABU-SSO: Unified Single Sign-On & Digital Campus Wallet
 
-**Course:** COEN838 — Advanced Software Engineering  
+**Course:** COEN838 - Advanced Software Engineering  
 **Student:** Idris Muhammad Abubakar  
 **Matric No:** P25EGCP9003  
 
@@ -217,9 +217,9 @@ Bootstrap safety: a fresh deployment can always be initialised (first user → a
 Mock services degrade gracefully: if the IdP is unreachable, they return HTTP 503 instead of serving unauthenticated content.
 
 5.2 Scalability
-Horizontal scaling: stateless JWT — multiple IdP instances behind a load balancer.
+Horizontal scaling: stateless JWT - multiple IdP instances behind a load balancer.
 
-Mock services scale independently — each runs on its own Render web service.
+Mock services scale independently - each runs on its own Render web service.
 
 Database growth: SQLite is single-writer; at production scale, swap DATABASE_URL to PostgreSQL — no code changes.
 
@@ -228,9 +228,9 @@ Read replicas: future work can add PostgreSQL read replicas for /auth/me.
 5.3 Known Limitations
 No rate limiting yet (planned via slowapi).
 
-No refresh tokens — users must re-login every 15 minutes.
+No refresh tokens - users must re-login every 15 minutes.
 
-No async task queue — everything is synchronous in the request cycle.
+No async task queue - everything is synchronous in the request cycle.
 
 Mock services use URL query-param token passing; production would use HttpOnly cookies or BFF pattern.
 
@@ -249,7 +249,7 @@ Layered Architecture	Routers / Services / Models	Clear responsibilities
 Service-Oriented	mock-services/*/main.py	Independent deployable units
 Bootstrap Pattern	auth.register	First-user admin creation on fresh DB
 
-7. Technology Choices — Justification
+7. Technology Choices - Justification
 Choice	Alternative	Why we chose ours
 FastAPI	Flask / Django	Async-native, auto-generated OpenAPI, type-driven
 SQLAlchemy	Raw SQL / Django ORM	Portable between SQLite and PostgreSQL
@@ -331,13 +331,13 @@ Event-based (Kafka/RabbitMQ)	Correct for async workloads; unnecessary for synchr
 OIDC Discovery + JWKS	Production-grade; requires HTTPS and DNS setup beyond demo scope
 
 8.5 Scalability & Resilience Implications
-Horizontal scale-out — services are stateless; N instances can run behind a load balancer.
+Horizontal scale-out - services are stateless; N instances can run behind a load balancer.
 
-IdP is the bottleneck — every request from every service calls /auth/me. In production, this would be mitigated by (a) caching verified tokens at the service for their remaining TTL, and (b) using RS256 with JWKS for local verification.
+IdP is the bottleneck - every request from every service calls /auth/me. In production, this would be mitigated by (a) caching verified tokens at the service for their remaining TTL, and (b) using RS256 with JWKS for local verification.
 
-Failure isolation — if the Library service dies, Portal and LMS remain fully functional.
+Failure isolation - if the Library service dies, Portal and LMS remain fully functional.
 
-Fail-secure — if the IdP is unreachable, services return 503, never serve data unauthenticated.
+Fail-secure - if the IdP is unreachable, services return 503, never serve data unauthenticated.
 
 8.6 How It Maps to the Rubric
 Rubric line	How the mock services satisfy it
@@ -354,8 +354,8 @@ mock-services/library/main.py	4003	Books & fines
 mock-services/hostel/main.py	4004	Room booking & gate access
 mock-services/wifi/main.py	4005	Network access & device registration
 mock-services/results/main.py	4006	Semester results & GPA
-mock-services/*/templates/service.html	—	Shared template (copied to all six)
-mock-services/*/requirements.txt	—	Independent dependency files for deployment
+mock-services/*/templates/service.html	-	Shared template (copied to all six)
+mock-services/*/requirements.txt	-	Independent dependency files for deployment
 
 8.8 Demo Flow
 User logs in once at ABU-SSO (/login).
@@ -372,7 +372,7 @@ Calls GET https://abu-sso.onrender.com/auth/me.
 
 Renders the Portal page with the user's profile.
 
-Same flow for LMS, Library, Hostel, Wi-Fi, Result Checker — no second password prompt in any of them.
+Same flow for LMS, Library, Hostel, Wi-Fi, Result Checker - no second password prompt in any of them.
 
 This demonstrates the single sign-on guarantee end-to-end, publicly, on the internet.
 

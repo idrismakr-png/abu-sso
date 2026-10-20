@@ -1,7 +1,7 @@
 # Security Documentation
 ## ABU-SSO: Unified Single Sign-On & Digital Campus Wallet
 
-**Course:** COEN838 — Advanced Software Engineering  
+**Course:** COEN838 - Advanced Software Engineering  
 **Student:** Idris Muhammad Abubakar  
 **Matric No:** P25EGCP9003  
 
@@ -36,7 +36,7 @@ STRIDE is applied to each major component.
 | **R**epudiation | User denies having logged in | Login flow is deterministic; an audit log is listed as future work |
 | **I**nformation Disclosure | Passwords leaked via API | Passwords never returned; `password_hash` never serialised |
 | **I**nformation Disclosure | Error messages reveal user existence | Login returns one generic message regardless of whether the matric exists |
-| **D**enial of Service | Attacker floods `/auth/login` | Rate limiting **not yet implemented** (residual risk — see §5) |
+| **D**enial of Service | Attacker floods `/auth/login` | Rate limiting **not yet implemented** (residual risk - see §5) |
 | **E**levation of Privilege | Attacker self-registers an admin account | **Bootstrap-only registration**: the very first user on a fresh DB becomes admin; every subsequent call to `/auth/register` returns HTTP 403. New accounts are created by an admin via `POST /admin/users` |
 | **E**levation of Privilege | Attacker changes their own role via API | No endpoint allows a normal user to change any user's role; only `PATCH /admin/users/{id}/role` (admin-only) can do so |
 
@@ -48,7 +48,7 @@ STRIDE is applied to each major component.
 | **T**ampering | Attacker sends negative amount to gain balance | Pydantic `Field(gt=0)` rejects negative amounts with HTTP 422 |
 | **T**ampering | Attacker tries to edit transaction history | `Transaction` records are append-only; no update/delete endpoint exists |
 | **R**epudiation | User denies a payment | Every transaction stores `amount`, `type`, `description`, `created_at` |
-| **I**nformation Disclosure | Attacker enumerates wallet IDs | Wallet is fetched via `user_id` from token — no ID enumeration possible |
+| **I**nformation Disclosure | Attacker enumerates wallet IDs | Wallet is fetched via `user_id` from token - no ID enumeration possible |
 | **D**enial of Service | Attacker spams top-up endpoint | Not rate-limited (residual risk) |
 | **E**levation of Privilege | Attacker tries `pay` on another wallet | Not possible — wallet is always derived from `current_user` |
 
@@ -57,15 +57,15 @@ STRIDE is applied to each major component.
 | Threat | Attack Scenario | Mitigation |
 |--------|-----------------|-----------|
 | **S**poofing | Attacker forges a QR code | QR encodes user id and matric; verifier must validate against the IdP |
-| **I**nformation Disclosure | QR photographed and decoded | QR contains only `{id, matric_no, role}` — no email, password, or wallet info |
+| **I**nformation Disclosure | QR photographed and decoded | QR contains only `{id, matric_no, role}` - no email, password, or wallet info |
 | **T**ampering | Attacker edits QR payload | Regenerated QR must match the IdP's record |
 
 ### 2.4 Admin Component (`/admin/*`)
 
 | Threat | Attack Scenario | Mitigation |
 |--------|-----------------|-----------|
-| **E**levation of Privilege | Student calls `/admin/users` | Entire router declares `dependencies=[Depends(require_role("admin"))]` — non-admins get HTTP 403 |
-| **E**levation of Privilege | Attacker creates an admin account via `/admin/users` as a non-admin | Not possible — 403 before the endpoint body runs |
+| **E**levation of Privilege | Student calls `/admin/users` | Entire router declares `dependencies=[Depends(require_role("admin"))]` - non-admins get HTTP 403 |
+| **E**levation of Privilege | Attacker creates an admin account via `/admin/users` as a non-admin | Not possible - 403 before the endpoint body runs |
 | **I**nformation Disclosure | Non-admin reads user list | 403 |
 | **T**ampering | Attacker changes another user's role | Only admins can call this endpoint |
 
@@ -73,7 +73,7 @@ STRIDE is applied to each major component.
 
 | Threat | Attack Scenario | Mitigation |
 |--------|-----------------|-----------|
-| **S**poofing | Attacker crafts a fake token for a service | Services do not decode tokens locally — they call the IdP's `/auth/me` and only trust the IdP's response |
+| **S**poofing | Attacker crafts a fake token for a service | Services do not decode tokens locally - they call the IdP's `/auth/me` and only trust the IdP's response |
 | **T**ampering | Attacker edits the token in the URL | Same — signature verification happens at the IdP |
 | **I**nformation Disclosure | Token visible in URL (query param) | Prototype limitation; production would use HttpOnly cookies or a BFF pattern |
 | **D**enial of Service | IdP down | Services return HTTP 503 and serve no data (fail-secure) |
@@ -112,29 +112,29 @@ STRIDE is applied to each major component.
 - **Password storage:** bcrypt with auto-generated salt (default work factor = 12).
 - **Token type:** JSON Web Token signed with HMAC-SHA256.
 - **Payload claims:**
-  - `sub` — user id (UUID)
-  - `iat` — issued at (Unix epoch)
-  - `exp` — expiry (iat + 900 seconds = 15 minutes)
+  - `sub` - user id (UUID)
+  - `iat` - issued at (Unix epoch)
+  - `exp` - expiry (iat + 900 seconds = 15 minutes)
 - **Transport:** `Authorization: Bearer <token>` header (for API), `?token=` query param (for mock services in the demo).
 - **Storage on client:** `localStorage["abu_token"]`.
 
 **Why JWT and not server-side sessions?**
-1. **Stateless** — API can scale horizontally.
-2. **Cross-service** — six services verify the same token without a shared session store.
-3. **Standard** — JWT is the industry norm for SSO.
+1. **Stateless** - API can scale horizontally.
+2. **Cross-service** - six services verify the same token without a shared session store.
+3. **Standard** - JWT is the industry norm for SSO.
 
 **Why matric instead of email?**
 - Matches real ABU practice: students memorise their matric number, not which email they used.
 - Eliminates a class of user-error login failures.
 - Emails are still stored for records (not for auth).
 
-### 4.2 Password Storage — bcrypt
+### 4.2 Password Storage - bcrypt
 
 - **Algorithm:** bcrypt with auto-generated salt (cost = 12).
 - **Why bcrypt?** Deliberately slow (~100 ms per hash), resisting brute-force attacks.
 - **Verification:** `bcrypt.checkpw()` uses constant-time comparison to mitigate timing attacks.
 
-### 4.3 Authorization — Role-Based Access Control (RBAC)
+### 4.3 Authorization - Role-Based Access Control (RBAC)
 
 Three roles: `student`, `staff`, `admin`. Enforced by a reusable FastAPI dependency factory:
 
@@ -162,7 +162,7 @@ Why this matters: Without the bootstrap rule, any internet user could call /auth
 Production workflow: students and staff receive their accounts from ABU ICT after admission or employment, matching the real university process.
 
 5. Security Testing Evidence
-5.1 Static Application Security Testing (SAST) — Bandit
+5.1 Static Application Security Testing (SAST) - Bandit
 Command: bandit -r app/
 
 Result:

@@ -3,15 +3,15 @@
 
 **Version:** 1.1  
 **Target users:** Students, Staff, and System Administrators of Ahmadu Bello University  
-**Course:** COEN838 — Advanced Software Engineering  
+**Course:** COEN838 - Advanced Software Engineering  
 
 ---
 
-## Part A — User Manual (For Students & Staff)
+## Part A - User Manual (For Students & Staff)
 
 ### A.1 What is ABU-SSO?
 
-ABU-SSO is a single sign-on system that lets you use **one matric / staff number and password** to access multiple campus services (Student Portal, LMS, Library, Hostel, Wi-Fi, Result Checker) and manage a personal **digital wallet** — all from one dashboard.
+ABU-SSO is a single sign-on system that lets you use **one matric / staff number and password** to access multiple campus services (Student Portal, LMS, Library, Hostel, Wi-Fi, Result Checker) and manage a personal **digital wallet** - all from one dashboard.
 
 ### A.2 Before You Start
 
@@ -37,11 +37,11 @@ Unlike consumer websites, **ABU-SSO does not have public self-registration**.
 1. Open your browser and go to the login page:  
    `https://abu-sso.onrender.com/login` (production)  
    or `http://127.0.0.1:8000/login` (local development)
-2. Enter your **Matric / Staff Number** — e.g., `P25EGCP9003` or `ADMIN/001`
+2. Enter your **Matric / Staff Number** - e.g., `P25EGCP9003` or `ADMIN/001`
 3. Enter your **Password**
 4. Click **Sign in**
 5. On success, you are redirected to your **Dashboard**.
-6. On failure, a red error message appears — check your number and password.
+6. On failure, a red error message appears - check your number and password.
 
 > **Tip:** Your matric / staff number is **not case-sensitive**. `p25egcp9003` and `P25EGCP9003` both work.
 
@@ -54,7 +54,7 @@ The dashboard shows everything at a glance:
 | **Welcome bar** | Your name, role, and matric number |
 | **Campus Wallet** | Current balance and recent transactions |
 | **Digital ID Card** | Your name, matric, role, email, and QR code |
-| **Campus Services** | Six clickable cards — Portal, LMS, Result Checker, Library, Hostel, Wi-Fi |
+| **Campus Services** | Six clickable cards - Portal, LMS, Result Checker, Library, Hostel, Wi-Fi |
 | **Log out** | Ends your session |
 | **Admin Panel** (admins only) | Blue button to open the admin page |
 
@@ -77,12 +77,12 @@ The dashboard shows everything at a glance:
 
 - On the dashboard, your **QR code** appears under "Digital ID Card".
 - Present it at library counters and hostel gates for scanning.
-- Each QR code encodes **only** `id`, `matric_no`, and `role` — no personal data such as passwords.
+- Each QR code encodes **only** `id`, `matric_no`, and `role` - no personal data such as passwords.
 - Regenerating your ID card: just refresh the dashboard.
 
 ### A.8 Using the Six Campus Services (Single Sign-On)
 
-The **Campus Services** card on your dashboard shows six buttons. Clicking any of them opens a **separate campus application** in a new tab — **already signed in** with your ABU-SSO account.
+The **Campus Services** card on your dashboard shows six buttons. Clicking any of them opens a **separate campus application** in a new tab - **already signed in** with your ABU-SSO account.
 
 | Service | What you can do |
 |---------|-----------------|
@@ -305,7 +305,7 @@ Change JWT_SECRET in .env (local) or in Render's Environment tab (production).
 
 Restart the application (Render does this automatically).
 
-All existing tokens become invalid — every user must log in again.
+All existing tokens become invalid - every user must log in again.
 
 C.6 Backups
 SQLite (dev): copy abu_sso.db to a safe location.
@@ -317,7 +317,7 @@ Ping /health every 60 seconds (UptimeRobot or similar).
 
 If it fails, check the Render logs.
 
-Part D — Support
+Part D - Support
 For issues related to the ABU-SSO prototype, contact the project author:
 
-Idris Muhammad Abubakar — P25EGCP9003 — Department of Computer Engineering, ABU Zaria.
+Idris Muhammad Abubakar - P25EGCP9003 - Department of Computer Engineering, ABU Zaria.

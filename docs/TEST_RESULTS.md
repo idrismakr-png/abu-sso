@@ -1,7 +1,7 @@
 # Test Results & Quality Evidence
 ## ABU-SSO: Unified Single Sign-On & Digital Campus Wallet
 
-**Course:** COEN838 — Advanced Software Engineering  
+**Course:** COEN838 - Advanced Software Engineering  
 **Student:** Idris Muhammad Abubakar  
 **Matric No:** P25EGCP9003  
 **Date:** October 2026  
@@ -77,7 +77,7 @@ app\utils\security.py 14 2 86% 22-23
 TOTAL 473 19 96%
 
 **Target:** ≥ 70% line coverage (rubric requirement).  
-**Achieved:** **96%** — exceeds target by 26 percentage points.
+**Achieved:** **96%** - exceeds target by 26 percentage points.
 
 **Why some lines are uncovered:** the remaining uncovered lines are defensive exception paths (e.g., SQLite file cleanup on session teardown, or environment-specific branches) that are difficult to exercise without environment manipulation. This is acceptable residual coverage.
 
@@ -87,7 +87,7 @@ TOTAL 473 19 96%
 
 ## 4. Test Inventory
 
-### 4.1 Unit Tests — `tests/test_security.py` (7 tests)
+### 4.1 Unit Tests - `tests/test_security.py` (7 tests)
 
 | Test | What it verifies |
 |------|------------------|
@@ -101,13 +101,13 @@ TOTAL 473 19 96%
 
 ### 4.2 Service Tests
 
-**`tests/test_user_service.py` (16 tests)** — CRUD operations, email normalisation, matric uppercasing, duplicate email, duplicate matric, password hashing, lookups by email / id / matric, case-insensitive matric, authentication success / failure / inactive-user rejection.
+**`tests/test_user_service.py` (16 tests)** - CRUD operations, email normalisation, matric uppercasing, duplicate email, duplicate matric, password hashing, lookups by email / id / matric, case-insensitive matric, authentication success / failure / inactive-user rejection.
 
-**`tests/test_wallet_service.py` (12 tests)** — Wallet auto-creation, idempotency, top-up, pay, insufficient funds, zero/negative amounts, transaction list ordering.
+**`tests/test_wallet_service.py` (12 tests)** - Wallet auto-creation, idempotency, top-up, pay, insufficient funds, zero/negative amounts, transaction list ordering.
 
-**`tests/test_admin.py` (23 tests)** — RBAC enforcement (401 without token, 403 for students), user listing, admin create-user (success, duplicate email, duplicate matric, non-admin blocked), role changes, activate/deactivate, deactivated user cannot log in, admin top-up, stats aggregation, service-level error paths.
+**`tests/test_admin.py` (23 tests)** - RBAC enforcement (401 without token, 403 for students), user listing, admin create-user (success, duplicate email, duplicate matric, non-admin blocked), role changes, activate/deactivate, deactivated user cannot log in, admin top-up, stats aggregation, service-level error paths.
 
-### 4.3 Integration Tests — `tests/test_api_integration.py` (21 tests)
+### 4.3 Integration Tests - `tests/test_api_integration.py` (21 tests)
 
 Full HTTP flows: register with matric, duplicate rejection, invalid input, matric login (correct, wrong, unknown, lowercase matric), missing/bad token, `/auth/me`, ID card generation, wallet top-up / pay / insufficient-funds / negative-amount, transaction listing, health check, root endpoint.
 
@@ -151,16 +151,16 @@ Low: 0
 **Workflow:** `.github/workflows/ci.yml`  
 **Trigger:** every push to `main` and every pull request
 
-**Job 1 — `test`:**
+**Job 1 - `test`:**
 1. Checkout code
 2. Set up Python 3.12
 3. Install dependencies from `requirements.txt`
-4. Run `pytest -v` — the 79 fast tests must pass
+4. Run `pytest -v` - the 79 fast tests must pass
 
-**Job 2 — `e2e`** (runs only if Job 1 passes):
+**Job 2 - `e2e`** (runs only if Job 1 passes):
 1. Checkout code + install dependencies
 2. Install Playwright and Chromium (with system deps)
-3. Run `pytest tests/e2e -m e2e -v` — the 5 browser-driven tests must pass
+3. Run `pytest tests/e2e -m e2e -v` - the 5 browser-driven tests must pass
 
 **Status:** ✅ Green  
 **Average runtime:** ~50 seconds (both jobs)
