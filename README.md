@@ -1,4 +1,4 @@
-# ABU-SSO — Unified Single Sign-On & Digital Campus Wallet
+# ABU-SSO - Unified Single Sign-On & Digital Campus Wallet
 
 [![CI](https://github.com/idrismakr-png/abu-sso/actions/workflows/ci.yml/badge.svg)](https://github.com/idrismakr-png/abu-sso/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
@@ -10,7 +10,7 @@
 
 A unified authentication and campus services platform for **Ahmadu Bello University, Zaria**. One login grants access to **six independent campus services** plus a digital wallet with QR ID card.
 
-**Course:** COEN838 — Advanced Software Engineering  
+**Course:** COEN838 - Advanced Software Engineering  
 **Student:** Idris Muhammad Abubakar (P25EGCP9003)
 
 ---
