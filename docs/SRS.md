@@ -76,27 +76,29 @@ This Software Requirements Specification (SRS) defines the functional and non-fu
 ABU-SSO is a **distributed, service-oriented system** in which a central identity provider (IdP) issues JWTs and six independent services trust those tokens. Each service is a **separate FastAPI application, deployed as a separate process**, in line with modern microservice principles.
 
 **Architectural position:**
-
-┌──────────────────────────────────────────────────────────────┐
-│                     User's Browser                           │
-└──────────────────────────┬───────────────────────────────────┘
-                           │
-                 ┌─────────▼──────────┐
-                 │ ABU-SSO (IdP)      │ ← Identity Provider
-                 │abu-sso.onrender.com│
-                 │                    │ 
-                 │    Issues JWT      │
-                 │  Verifies JWT      │
-                 └─────────┬──────────┘
-                           │
-     ┌─────────┬───────────┼───────────┬─────────┬───────────┐
-     │         │           │           │         │           │
-┌────▼────┐┌───▼────┐┌─────▼────┐┌─────▼───┐┌────▼────┐┌─────▼─────┐
-│ Portal  ││ LMS    ││ Library  ││ Hostel  ││ Wi-Fi   ││ Result    │
-│ (4001)  ││ (4002) ││ (4003)   ││ (4004)  ││ (4005)  ││ Checker   │
-│         ││        ││          ││         ││         ││ (4006)    │
-└─────────┘└────────┘└──────────┘└─────────┘└─────────┘└───────────┘
-
+abu-sso/
+- app/                      (Main Application - Identity Provider)
+  - main.py                 (App factory, router registration)
+  - config.py               (Settings / pydantic-settings)
+  - database.py             (SQLAlchemy engine + session)
+  - models/                 (ORM: User, Wallet, Transaction)
+  - schemas/                (Pydantic request/response schemas)
+  - routers/                (auth, wallet, id_card, admin, health, pages)
+  - services/               (Business logic)
+  - utils/                  (security.py, jwt.py, rbac.py)
+  - templates/              (Jinja2 HTML: login, dashboard, admin)
+  - static/                 (CSS + JS)
+- mock-services/            (6 Independent SSO Services)
+  - portal/                 (Student Portal - port 4001)
+  - lms/                    (LMS - port 4002)
+  - library/                (Library - port 4003)
+  - hostel/                 (Hostel - port 4004)
+  - wifi/                   (Wi-Fi - port 4005)
+  - results/                (Result Checker - port 4006)
+- tests/                    (121 automated tests)
+- docs/                     (SRS, RTM, Design, Security, etc.)
+- render.yaml               (Blueprint for 7 Render services)
+- .github/workflows/ci.yml  (GitHub Actions CI pipeline)
 
 ### 2.2 Product Functions
 

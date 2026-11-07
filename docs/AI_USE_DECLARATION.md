@@ -99,8 +99,8 @@ I, **Idris Muhammad Abubakar (P25EGCP9003)**, declare that:
 3. I have verified every component of the submitted system and can defend it orally.
 4. This declaration is made in accordance with COEN838 exam instruction F.
 
-**Signature:** ____Idris Muhammad Abubakar___________________  
-**Date:** November 2026
+**Signature:** Idris Muhammad Abubakar  
+**Date:**      November 2026
 
 ---
 
