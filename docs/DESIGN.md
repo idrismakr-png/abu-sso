@@ -1,7 +1,7 @@
 # Design Document
 ## ABU-SSO: Unified Single Sign-On & Digital Campus Wallet
 
-**Course:** COEN838 — Advanced Software Engineering  
+**Course:** COEN838 - Advanced Software Engineering  
 **Student:** Idris Muhammad Abubakar  
 **Matric No:** P25EGCP9003  
 
@@ -15,17 +15,17 @@ ABU-SSO is a **modular monolith** structured as a **layered architecture**, orga
 
 **Why modular monolith (and not microservices from day one)?**
 
-| Consideration | Modular Monolith | Microservices |
-|---------------|:----------------:|:-------------:|
-| Team size | ✅ 1 developer | ❌ Needs 3+ teams |
-| Deployment complexity | ✅ Single process | ❌ Container orchestration |
-| Learning curve | ✅ Simple | ❌ High |
-| Growth path | ✅ Services can be extracted | ✅ Native |
-| Consistency | ✅ Single transaction | ❌ Saga needed |
+|Consideration         | Modular Monolith        | Microservices          |
+|----------------------|:-----------------------:|:----------------------:|
+|Team size             |1 developer              |Needs 3+ teams          |
+|Deployment complexity |Single process           |Container orchestration |
+|Learning curve        |Simple                   |High                    |
+|Growth path           |Services can beextracted |Native                  |
+|Consistency           |Single transaction       |Saga needed             |
 
 The modular monolith was chosen because the project is built by a single developer within a course timeframe, but the **service boundaries are already drawn** so any router (`auth`, `wallet`, `id_card`, `admin`) could be extracted into its own microservice without rewriting business logic.
 
-**A real distributed layer was subsequently added** — six independent mock services (Portal, LMS, Library, Hostel, Wi-Fi, Result Checker) that trust ABU-SSO as their identity provider. See Section 8.
+**A real distributed layer was subsequently added** - six independent mock services (Portal, LMS, Library, Hostel, Wi-Fi, Result Checker) that trust ABU-SSO as their identity provider. See Section 8.
 
 ### 1.2 Layer Responsibilities
 
@@ -48,55 +48,55 @@ Future asynchronous events (e.g. "notify user on wallet top-up") would use a mes
 
 | File | Responsibility |
 |------|----------------|
-| `app/routers/auth.py` | HTTP endpoints: `/auth/register`, `/auth/login`, `/auth/me` |
-| `app/services/user_service.py` | `create_user`, `authenticate_user`, lookup helpers |
-| `app/utils/security.py` | `hash_password`, `verify_password` (bcrypt) |
-| `app/utils/jwt.py` | `create_access_token`, `decode_token`, `get_current_user` dependency |
-| `app/utils/rbac.py` | `require_role(*roles)` — dependency factory for role-gated endpoints |
-| `app/schemas/user.py` | Pydantic schemas: `UserCreate`, `UserRead`, `UserLogin`, `Token` |
+|`app/routers/auth.py` | HTTP endpoints: `/auth/register`, `/auth/login`, `/auth/me` |
+|`app/services/user_service.py` | `create_user`, `authenticate_user`, lookup helpers |
+|`app/utils/security.py` | `hash_password`, `verify_password` (bcrypt) |
+|`app/utils/jwt.py` | `create_access_token`, `decode_token`, `get_current_user` dependency |
+|`app/utils/rbac.py` | `require_role(*roles)` — dependency factory for role-gated endpoints |
+|`app/schemas/user.py` | Pydantic schemas: `UserCreate`, `UserRead`, `UserLogin`, `Token` |
 
 **Key design decision:** `get_current_user` is a FastAPI dependency. Any protected route declares `current_user: User = Depends(get_current_user)` — the authentication logic lives in exactly one place.
 
 ### 2.2 Wallet Component
 
-| File | Responsibility |
-|------|----------------|
-| `app/routers/wallet.py` | Endpoints: `/wallet`, `/wallet/topup`, `/wallet/pay`, `/wallet/transactions` |
-| `app/services/wallet_service.py` | `get_or_create_wallet`, `top_up`, `pay`, `list_transactions` |
-| `app/models/wallet.py` | `Wallet` + `Transaction` ORM models |
-| `app/schemas/wallet.py` | `WalletRead`, `TransactionRead`, `TopUpRequest`, `PayRequest` |
+| File                            | Responsibility                                                               |
+|---------------------------------|------------------------------------------------------------------------------|
+|`app/routers/wallet.py`          | Endpoints: `/wallet`, `/wallet/topup`, `/wallet/pay`, `/wallet/transactions` |
+|`app/services/wallet_service.py` |`get_or_create_wallet`, `top_up`, `pay`, `list_transactions`                  |
+|`app/models/wallet.py`           |`Wallet` + `Transaction` ORM models                                           |
+|`app/schemas/wallet.py`          |`WalletRead`, `TransactionRead`, `TopUpRequest`, `PayRequest`                 |
 
 **Key design decision:** every wallet operation is **atomic** — the balance update and the transaction insert happen in a single `db.commit()`. If the balance is insufficient, `pay()` raises before touching the DB.
 
 ### 2.3 Digital ID Card Component
 
-| File | Responsibility |
-|------|----------------|
-| `app/routers/id_card.py` | Endpoint `/id-card` |
-| `app/services/qr_service.py` | `build_id_card_payload`, `generate_qr_data_url` |
-| `app/schemas/id_card.py` | `IdCardResponse` |
+| File                        |Responsibility                                  |
+|-----------------------------|------------------------------------------------|
+|`app/routers/id_card.py`     |Endpoint `/id-card`                             |
+|`app/services/qr_service.py` |`build_id_card_payload`, `generate_qr_data_url` |
+|`app/schemas/id_card.py`     |`IdCardResponse`                                |
 
 **Key design decision:** the QR code encodes only `{id, matric_no, role}` — no personal data — reducing the risk of information disclosure if a card is photographed.
 
 ### 2.4 Admin Component (RBAC)
 
-| File | Responsibility |
-|------|----------------|
-| `app/routers/admin.py` | Endpoints: `/admin/users`, `/admin/users/{id}/role`, `/admin/users/{id}/active`, `/admin/wallet/topup`, `/admin/stats` |
-| `app/services/admin_service.py` | User listing, role changes, activation, admin top-ups, stats aggregation |
-| `app/schemas/admin.py` | `UserAdminView`, `AdminTopUpRequest`, `AdminRoleUpdateRequest`, `AdminStats` |
-| `app/utils/rbac.py` | `require_role("admin")` — 403 for non-admins |
+| File                  | Responsibility |
+|-----------------------|----------------|
+|`app/routers/admin.py` |Endpoints: `/admin/users`, `/admin/users/{id}/role`, `/admin/users/{id}/active`, `/admin/wallet/topup`, `/admin/stats` |
+|`app/services/admin_service.py`         | User listing, role changes, activation, admin top-ups, stats aggregation |
+|`app/schemas/admin.py` |`UserAdminView`, `AdminTopUpRequest`, `AdminRoleUpdateRequest`, `AdminStats` |
+|`app/utils/rbac.py`    |`require_role("admin")` — 403 for non-admins |
 
 **Key design decision:** the entire admin router declares `dependencies=[Depends(require_role("admin"))]` — every endpoint in the router is automatically protected. Non-admin callers receive HTTP 403 Forbidden.
 
 ### 2.5 Presentation Component
 
-| File | Responsibility |
-|------|----------------|
-| `app/routers/pages.py` | Serves `/login`, `/dashboard`, `/admin` |
+| File                       |Responsibility  |
+|----------------------------|----------------|
+| `app/routers/pages.py`     | Serves `/login`, `/dashboard`, `/admin` |
 | `app/templates/base.html`, `login.html`, `dashboard.html`, `admin.html` | Jinja2 templates |
-| `app/static/css/style.css` | Green campus theme |
-| `app/static/js/app.js` | Shared JS; page-specific logic inline in templates |
+| `app/static/css/style.css` |Green campus theme |
+| `app/static/js/app.js`     |Shared JS; page-specific logic inline in templates |
 
 The dashboard calls `/auth/me`, `/wallet`, `/wallet/transactions`, and `/id-card` using the JWT stored in `localStorage`. The admin page additionally calls `/admin/*`.
 
@@ -112,36 +112,36 @@ See `docs/diagrams/class_model.png`.
 
 **`users`**
 
-| Column | Type | Constraint |
-|--------|------|-----------|
-| id | VARCHAR(36) | PRIMARY KEY |
-| email | VARCHAR(255) | UNIQUE, NOT NULL, INDEXED |
-| password_hash | VARCHAR(255) | NOT NULL |
-| full_name | VARCHAR(255) | NULL |
-| role | VARCHAR(50) | NOT NULL, default 'student' |
-| matric_no | VARCHAR(50) | NULL, INDEXED |
-| is_active | BOOLEAN | NOT NULL, default TRUE |
-| created_at | DATETIME | NOT NULL |
+|Column        | Type         | Constraint                  |
+|---------------|--------------|-----------------------------|
+|id            | VARCHAR(36)  | PRIMARY KEY                 |
+|email         | VARCHAR(255) | UNIQUE, NOT NULL, INDEXED   |
+|password_hash | VARCHAR(255) | NOT NULL                    |
+|full_name     | VARCHAR(255) | NULL                        | 
+|role          | VARCHAR(50)  | NOT NULL, default 'student' |
+|matric_no     | VARCHAR(50)  | NULL, INDEXED               |
+|is_active     | BOOLEAN      | NOT NULL, default TRUE      |
+|created_at    | DATETIME     | NOT NULL                    |
 
 **`wallets`**
 
-| Column | Type | Constraint |
-|--------|------|-----------|
-| id | VARCHAR(36) | PRIMARY KEY |
-| user_id | VARCHAR(36) | FOREIGN KEY → users.id, UNIQUE |
-| balance | NUMERIC(10,2) | NOT NULL, default 0 |
-| created_at | DATETIME | NOT NULL |
+| Column     | Type          | Constraint                     |
+|------------|---------------|--------------------------------|
+| id         | VARCHAR(36)   | PRIMARY KEY                    |
+| user_id    | VARCHAR(36)   | FOREIGN KEY → users.id, UNIQUE |
+| balance    | NUMERIC(10,2) | NOT NULL, default 0            |
+| created_at | DATETIME      | NOT NULL                       |
 
 **`transactions`**
 
-| Column | Type | Constraint |
-|--------|------|-----------|
-| id | VARCHAR(36) | PRIMARY KEY |
-| wallet_id | VARCHAR(36) | FOREIGN KEY → wallets.id |
-| amount | NUMERIC(10,2) | NOT NULL |
-| type | VARCHAR(20) | NOT NULL, `credit` or `debit` |
-| description | VARCHAR(255) | NULL |
-| created_at | DATETIME | NOT NULL |
+|Column       | Type         | Constraint                    |
+|-------------|--------------|-------------------------------|
+|id           | VARCHAR(36)  | PRIMARY KEY                   |
+|wallet_id    | VARCHAR(36)  | FOREIGN KEY → wallets.id      |
+|amount       | NUMERIC(10,2)| NOT NULL                      |
+|type         | VARCHAR(20)  | NOT NULL, `credit` or `debit` |
+|description  | VARCHAR(255) | NULL                          |
+|created_at   | DATETIME     | NOT NULL                      |
 
 ### 3.3 Design Decisions
 
@@ -157,10 +157,11 @@ See `docs/diagrams/class_model.png`.
 See `docs/diagrams/sequence_login.png` for the login sequence. Below is the wallet payment flow in text form:
 
 Client (browser)
-│
-│ POST /wallet/pay {amount: 250}
-│ Authorization: Bearer <JWT>
-▼
+
+  POST /wallet/pay {amount: 250}
+  Authorization: Bearer <JWT>
+                  |
+                  ▼
 Router (wallet.py: pay_from_wallet)
 │
 ├─ Depends(get_current_user) ──► JWT validated, User loaded
@@ -179,8 +180,8 @@ Router (wallet.py: pay_from_wallet)
 ├─ db.commit()
 │
 └─ return Transaction
-│
-▼
+           │
+           ▼
 Client receives 201 Created + transaction JSON
 
 ---
@@ -212,35 +213,35 @@ Client receives 201 Created + transaction JSON
 
 ## 6. Design Patterns Applied
 
-| Pattern | Where | Why |
-|---------|-------|-----|
-| **Repository / Service Layer** | `app/services/*.py` | Business logic separated from HTTP |
-| **Dependency Injection** | FastAPI `Depends()` for DB and current user | Testable; single source of truth |
-| **Schema / DTO** | Pydantic `*Create`, `*Read` classes | Never leak ORM internals to API |
-| **Singleton** | `settings = Settings()` in `config.py` | One configuration source |
-| **Factory** | `create_engine`, `sessionmaker` in `database.py` | Configurable DB backend |
-| **Factory (dependency)** | `require_role(*roles)` in `rbac.py` | Reusable role-gating |
-| **Middleware / Decorator** | `get_current_user` dependency | Cross-cutting auth for all protected routes |
-| **Layered Architecture** | Routers / Services / Models | Clear responsibilities |
-| **Service-Oriented (mock services)** | `mock-services/*/main.py` | Independent deployable units |
+|Pattern                              | Where                                            | Why                                         |
+|-------------------------------------|--------------------------------------------------|---------------------------------------------|
+|**Repository / Service Layer**       | `app/services/*.py`                              | Business logic separated from HTTP          |
+|**Dependency Injection**             | FastAPI `Depends()` for DB and current user      | Testable; single source of truth            |
+|**Schema / DTO**                     | Pydantic `*Create`, `*Read` classes              | Never leak ORM internals to API             |
+|**Singleton**                        | `settings = Settings()` in `config.py`           | One configuration source                    |
+|**Factory**                          | `create_engine`, `sessionmaker` in `database.py` | Configurable DB backend                     |
+|**Factory (dependency)**             | `require_role(*roles)` in `rbac.py`              | Reusable role-gating                        |
+|**Middleware / Decorator**           | `get_current_user` dependency                    | Cross-cutting auth for all protected routes |
+|**Layered Architecture**             | Routers / Services / Models                      | Clear responsibilities                      |
+|**Service-Oriented (mock services)** | `mock-services/*/main.py`                        | Independent deployable units                |
 
 ---
 
 ## 7. Technology Choices — Justification
 
-| Choice | Alternative | Why we chose ours |
-|--------|-------------|-------------------|
-| FastAPI | Flask / Django | Async-native, auto-generated OpenAPI, type-driven |
-| SQLAlchemy | Raw SQL / Django ORM | Portable between SQLite and PostgreSQL |
-| SQLite (dev) | PostgreSQL from day 1 | Zero setup for a beginner; migrate later |
-| JWT (HS256) | Server-side sessions | Stateless; ideal for SSO across services |
-| bcrypt | SHA-256 | Designed for password storage; salted; slow by design |
-| RBAC middleware | Hard-coded role checks | Reusable, testable, single source of truth |
-| Jinja2 + vanilla JS | React / Vue | Simpler; sufficient for a three-page UI |
-| pytest | unittest | Cleaner syntax, better fixtures |
-| GitHub Actions | Jenkins | Free, integrated with GitHub |
-| Bandit | Manual review | Automated SAST — evidence for security rubric |
-| Render + Neon | Single-provider hosting | Free tier stability; separation of compute and storage |
+| Choice              | Alternative             | Why we chose ours                                     |
+|---------------------|-------------------------|-------------------------------------------------------|
+| FastAPI             | Flask / Django          | Async-native, auto-generated OpenAPI, type-driven     |
+| SQLAlchemy          | Raw SQL / Django ORM    | Portable between SQLite and PostgreSQL                |
+| SQLite (dev)        | PostgreSQL from day 1   | Zero setup for a beginner; migrate later              |
+| JWT (HS256)         | Server-side sessions    | Stateless; ideal for SSO across services              |
+| bcrypt              | SHA-256                 | Designed for password storage; salted; slow by design |
+| RBAC middleware     | Hard-coded role checks  | Reusable, testable, single source of truth            |
+| Jinja2 + vanilla JS | React / Vue             | Simpler; sufficient for a three-page UI               |
+| pytest              | unittest                | Cleaner syntax, better fixtures                       |
+| GitHub Actions      | Jenkins                 | Free, integrated with GitHub                          |
+| Bandit              | Manual review           | Automated SAST — evidence for security rubric         |
+| Render + Neon       | Single-provider hosting | Free tier stability; separation of compute and storage|
 
 ---
 
@@ -259,40 +260,40 @@ Building three separate services that **independently verify the SSO token** pro
 ### 8.2 Service Topology
 
 
-┌──────────────────────────────────────────────────────────────┐
-│ User's Browser │
-└──────────────────────────┬───────────────────────────────────┘
-│
-┌─────────▼──────────┐
-│ ABU-SSO (IdP) │ ← Identity Provider
-│ http://...:8000 │
-│ │
-│ Issues JWT │
-│ Verifies JWT │
-└─────────┬──────────┘
-│
-┌───────────────┼───────────────┐
-│ │ │
-┌──────▼──────┐ ┌──────▼──────┐ ┌──────▼──────┐
-│ Portal │ │ LMS │ │ Library │
-│ :4001 │ │ :4002 │ │ :4003 │
-│ │ │ │ │ │
-│ Verifies │ │ Verifies │ │ Verifies │
-│ JWT via │ │ JWT via │ │ JWT via │
-│ IdP │ │ IdP │ │ IdP │
-└─────────────┘ └─────────────┘ └─────────────┘
+ ┌─────────────────────────────────────────────────────────────┐
+ │                    User's Browser                           │
+ └──────────────────────────┬──────────────────────────────────┘
+                            │
+                  ┌─────────▼──────────┐
+             ABU-SSO (IdP)  │ ← Identity Provider
+                  │ http://...:8000    │
+                  │                    │
+                  │ Issues JWT         │
+                  │ Verifies JWT       │
+                  └─────────┬──────────┘
+
+            ┌───────────────┼───────────────┐
+
+    ┌──────▼──────┐ ┌──────▼──────┐ ┌──────▼──────┐
+    │    Portal   │ │   LMS       │ │ Library     │
+    │    :4001    │ │   :4002     │ │ :4003       │
+    │             │ │             │ │             │
+    │ Verifies    │ │ Verifies    │ │ Verifies    │
+    │ JWT via     │ │ JWT via     │ │ JWT via     │
+    │ IdP         │ │ IdP         │ │ IdP         │
+    └─────────────┘ └─────────────┘ └─────────────┘
 
 
 ### 8.3 Design Decisions
 
-| Decision | Choice | Justification |
-|----------|--------|---------------|
-| **Service boundary** | Each service is a **standalone FastAPI app** in its own process | Independence — one can crash without affecting the others |
-| **Data ownership** | No service has a user table | Single source of truth remains the IdP; services are stateless verifiers |
-| **Token verification** | HTTP call to `IdP/auth/me` | Simpler than sharing the JWT secret; models how OIDC UserInfo works |
-| **Token transport** | URL query param `?token=<JWT>` | Simplest cross-origin demo; production would use HttpOnly cookies or BFF pattern |
-| **Coupling** | Loose — services know only the IdP's base URL | Swap or scale IdP without touching services |
-| **Failure mode** | If IdP is down, service returns HTTP 503 | Fail-secure: never serve data without verification |
+| Decision               | Choice                                                          | Justification                                                  |
+|------------------------|-----------------------------------------------------------------|----------------------------------------------------------------|
+| **Service boundary**   | Each service is a **standalone FastAPI app** in its own process | Independence — one can crash without affecting the others      |
+| **Data ownership**     | No service has a user table                                     | Single source of truth remains the IdP; services are stateless verifiers|
+| **Token verification** | HTTP call to `IdP/auth/me`                                      | Simpler than sharing the JWT secret; models how OIDC UserInfo works              |
+| **Token transport**    | URL query param `?token=<JWT>`                                  | Simplest cross-origin demo; production would use HttpOnly cookies or BFF pattern |
+| **Coupling**           | Loose — services know only the IdP's base URL                   | Swap or scale IdP without touching services                                      |
+| **Failure mode**       | If IdP is down, service returns HTTP 503                        | Fail-secure: never serve data without verification                                                                               |
 
 ### 8.4 Inter-Service Communication Patterns
 
@@ -304,12 +305,12 @@ Building three separate services that **independently verify the SSO token** pro
 
 **Alternative patterns considered:**
 
-| Pattern | Why we didn't choose it (for this prototype) |
-|---------|---------------------------------------------|
+| Pattern                                             | Why we didn't choose it (for this prototype)                                         |
+|-----------------------------------------------------|--------------------------------------------------------------------------------------|
 | Shared JWT secret (each service verifies signature) | Requires distributing secret; harder to rotate; couples services to algorithm choice |
-| RS256 public-key verification | Better for production; overkill for a demo where IdP is co-located |
-| Event-based (Kafka/RabbitMQ) | Correct for async workloads; unnecessary for a synchronous read |
-| OIDC Discovery + JWKS | Production-grade; requires HTTPS and DNS setup beyond demo scope |
+| RS256 public-key verification                       | Better for production; overkill for a demo where IdP is co-located                   |
+| Event-based (Kafka/RabbitMQ)                        | Correct for async workloads; unnecessary for a synchronous read                      |
+| OIDC Discovery + JWKS                               | Production-grade; requires HTTPS and DNS setup beyond demo scope                     |
 
 ### 8.5 Scalability & Resilience Implications
 
@@ -322,20 +323,20 @@ Building three separate services that **independently verify the SSO token** pro
 
 ### 8.6 How It Maps to the Rubric
 
-| Rubric line | How the mock services satisfy it |
-|-------------|----------------------------------|
-| "distributed/service-oriented solution" | Six independent services on distinct ports, each a separate OS process |
-| "inter-component communication pattern" | Synchronous REST; token passed via HTTP header; documented above |
-| "scalability" | Stateless services, horizontally scalable; IdP bottleneck documented with mitigations |
-| "resilience" | Fail-secure when IdP unreachable; failure isolation across services |
+| Rubric line                             | How the mock services satisfy it                                                      |
+|-----------------------------------------|---------------------------------------------------------------------------------------|
+| "distributed/service-oriented solution" | Six independent services on distinct ports, each a separate OS process                |
+| "inter-component communication pattern" | Synchronous REST; token passed via HTTP header; documented above                      |
+| "scalability"                           | Stateless services, horizontally scalable; IdP bottleneck documented with mitigations |
+| "resilience"                            | Fail-secure when IdP unreachable; failure isolation across services                   |
 
 ### 8.7 Files
 
-| File | Purpose |
-|------|---------|
-| `mock-services/portal/main.py` | Standalone FastAPI app on port 4001 |
-| `mock-services/lms/main.py` | Standalone FastAPI app on port 4002 |
-| `mock-services/library/main.py` | Standalone FastAPI app on port 4003 |
+| File                                          | Purpose                               |
+|-----------------------------------------------|---------                              |
+| `mock-services/portal/main.py`                | Standalone FastAPI app on port 4001   |
+| `mock-services/lms/main.py`                   | Standalone FastAPI app on port 4002   |
+| `mock-services/library/main.py`               | Standalone FastAPI app on port 4003   |
 | `mock-services/portal/templates/service.html` | Shared template (copied to all three) |
 
 ### 8.8 Demo Flow

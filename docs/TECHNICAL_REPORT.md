@@ -202,29 +202,28 @@ See Sections 5, 6, and `docs/RISK_AND_MAINTENANCE.md`.
 ### 3.2 Project Structure
 
 abu-sso/
-├── app/
-│ ├── main.py # App factory, router registration
-│ ├── config.py # Settings (pydantic-settings)
-│ ├── database.py # SQLAlchemy engine + session
-│ ├── models/ # ORM: User, Wallet, Transaction
-│ ├── schemas/ # Pydantic request/response schemas
-│ ├── routers/ # auth, wallet, id_card, admin, health, pages
-│ ├── services/ # Business logic
-│ ├── utils/ # security.py, jwt.py, rbac.py
-│ ├── templates/ # Jinja2 HTML (login, dashboard, admin)
-│ └── static/ # CSS + JS
-├── mock-services/ # 6 independent SSO services
-│ ├── portal/ # Student Portal (port 4001)
-│ ├── lms/ # LMS (port 4002)
-│ ├── library/ # Library (port 4003)
-│ ├── hostel/ # Hostel (port 4004)
-│ ├── wifi/ # Wi-Fi (port 4005)
-│ └── results/ # Result Checker (port 4006)
-├── tests/ # 84 pytest tests
-├── docs/ # SRS, RTM, Design, Security, etc.
-├── render.yaml # Blueprint for 7 Render services
-└── .github/workflows/ci.yml # CI pipeline
-
+- app/                      (Main Application - Identity Provider)
+  - main.py                 (App factory, router registration)
+  - config.py               (Settings / pydantic-settings)
+  - database.py             (SQLAlchemy engine + session)
+  - models/                 (ORM: User, Wallet, Transaction)
+  - schemas/                (Pydantic request/response schemas)
+  - routers/                (auth, wallet, id_card, admin, health, pages)
+  - services/               (Business logic)
+  - utils/                  (security.py, jwt.py, rbac.py)
+  - templates/              (Jinja2 HTML: login, dashboard, admin)
+  - static/                 (CSS + JS)
+- mock-services/            (6 Independent SSO Services)
+  - portal/                 (Student Portal - port 4001)
+  - lms/                    (LMS - port 4002)
+  - library/                (Library - port 4003)
+  - hostel/                 (Hostel - port 4004)
+  - wifi/                   (Wi-Fi - port 4005)
+  - results/                (Result Checker - port 4006)
+- tests/                    (121 automated tests)
+- docs/                     (SRS, RTM, Design, Security, etc.)
+- render.yaml               (Blueprint for 7 Render services)
+- .github/workflows/ci.yml  (GitHub Actions CI pipeline)
 
 ### 3.3 Key Code Highlights
 

@@ -78,23 +78,23 @@ ABU-SSO is a **distributed, service-oriented system** in which a central identit
 **Architectural position:**
 
 ┌──────────────────────────────────────────────────────────────┐
-│ User's Browser │
+│                     User's Browser                           │
 └──────────────────────────┬───────────────────────────────────┘
-│
-┌─────────▼──────────┐
-│ ABU-SSO (IdP) │ ← Identity Provider
-│ abu-sso.onrender.com │
-│ │
-│ Issues JWT │
-│ Verifies JWT │
-└─────────┬──────────┘
-│
-┌─────────┬───────────┼───────────┬─────────┬───────────┐
-│ │ │ │ │ │
+                           │
+                 ┌─────────▼──────────┐
+                 │ ABU-SSO (IdP)      │ ← Identity Provider
+                 │abu-sso.onrender.com│
+                 │                    │ 
+                 │    Issues JWT      │
+                 │  Verifies JWT      │
+                 └─────────┬──────────┘
+                           │
+     ┌─────────┬───────────┼───────────┬─────────┬───────────┐
+     │         │           │           │         │           │
 ┌────▼────┐┌───▼────┐┌─────▼────┐┌─────▼───┐┌────▼────┐┌─────▼─────┐
-│ Portal ││ LMS ││ Library ││ Hostel ││ Wi-Fi ││ Result │
-│ (4001) ││ (4002) ││ (4003) ││ (4004) ││ (4005) ││ Checker │
-│ ││ ││ ││ ││ ││ (4006) │
+│ Portal  ││ LMS    ││ Library  ││ Hostel  ││ Wi-Fi   ││ Result    │
+│ (4001)  ││ (4002) ││ (4003)   ││ (4004)  ││ (4005)  ││ Checker   │
+│         ││        ││          ││         ││         ││ (4006)    │
 └─────────┘└────────┘└──────────┘└─────────┘└─────────┘└───────────┘
 
 
@@ -280,31 +280,31 @@ See `docs/diagrams/class_model.png`.
 ### 4.5 Functional Decomposition
 
 
-ABU-SSO
-├── Authentication Subsystem
-│ ├── Bootstrap registration (FR-01)
-│ ├── Login with matric (FR-04, FR-05)
-│ └── Identity resolution (FR-06)
-├── Admin Subsystem
-│ ├── Create users (FR-16)
-│ ├── Manage users (FR-18)
-│ └── Statistics (FR-19)
-├── Identity Subsystem
-│ └── Digital ID Card + QR (FR-07)
-├── Wallet Subsystem
-│ ├── Auto-create (FR-08)
-│ ├── Top up (FR-09, FR-11)
-│ ├── Pay (FR-10, FR-11)
-│ └── History (FR-12)
-├── Presentation Subsystem
-│ ├── Login page
-│ ├── Dashboard (FR-15)
-│ └── Admin panel
-└── Distributed SSO Subsystem
-├── Portal, LMS, Library
-└── Hostel, Wi-Fi, Result Checker (FR-17)
+**Functional Decomposition**
 
-
+* **ABU-SSO**
+  * **Authentication Subsystem**
+    * Bootstrap registration (FR-01)
+    * Login with matric (FR-04, FR-05)
+    * Identity resolution (FR-06)
+  * **Admin Subsystem**
+    * Create users (FR-16)
+    * Manage users (FR-18)
+    * Statistics (FR-19)
+  * **Identity Subsystem**
+    * Digital ID Card + QR (FR-07)
+  * **Wallet Subsystem**
+    * Auto-create (FR-08)
+    * Top up (FR-09, FR-11)
+    * Pay (FR-10, FR-11)
+    * History (FR-12)
+  * **Presentation Subsystem**
+    * Login page
+    * Dashboard (FR-15)
+    * Admin panel
+  * **Distributed SSO Subsystem**
+    * Portal, LMS, Library
+    * Hostel, Wi-Fi, Result Checker (FR-17)
 
 
 ### 4.6 Evaluation Metrics and KPIs

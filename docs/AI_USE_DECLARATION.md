@@ -4,7 +4,7 @@
 **Course:** COEN838 - Advanced Software Engineering  
 **Student:** Idris Muhammad Abubakar  
 **Matric No:** P25EGCP9003  
-**Date:** October 2026  
+**Date:** November 2026  
 
 ---
 
@@ -35,7 +35,6 @@ AI was used in the following **supporting** capacities:
 
 | Area | Assistance Type | Candidate's Responsibility |
 |------|----------------|---------------------------|
-| **Learning environment setup** | Step-by-step guidance on installing Python, Conda, Git, VS Code on Windows | Candidate executed every command and verified each result |
 | **Code scaffolding** | Example patterns for FastAPI routers, SQLAlchemy models, Pydantic schemas | Candidate reviewed, understood, and where necessary modified each snippet |
 | **Debugging** | Explaining error messages (import errors, encoding issues, path issues) | Candidate applied fixes and confirmed behaviour |
 | **Documentation drafting** | Structuring SRS, RTM, Design, Security, and Technical Report sections | Candidate filled in project-specific details and validated factual accuracy |
@@ -48,12 +47,12 @@ AI was used in the following **supporting** capacities:
 
 The following engineering decisions and artefacts were **the candidate's own work**:
 
-1. **Requirements interpretation** — the decision to answer Question 7 (ABU-SSO) and the scope boundary drawn for the prototype.
-2. **Design choices** — selecting a modular monolith with clear growth path, choosing JWT + bcrypt over sessions, choosing lazy wallet creation.
-3. **Testing strategy** — the decision to use three test layers (unit, service, integration) with a temp database, and to run Bandit SAST.
-4. **Deployment** — the decision to split hosting (Render for app, Neon for DB) after discovering Render's free-tier DB expiry.
-5. **Written narrative** — the analysis in the Technical Report, Risk Register, and Maintenance Plan reflects the candidate's own understanding of Sommerville and Pressman course material.
-6. **Verification** — every code path was executed, every test was run, every deployment was manually verified in a browser.
+1. **Requirements interpretation:** The decision to answer Question 7 (ABU-SSO) and the scope boundary drawn for the prototype.
+2. **Design choices:** Selecting a modular monolith with clear growth path, choosing JWT + bcrypt over sessions, choosing lazy wallet creation.
+3. **Testing strategy:** The decision to use three test layers (unit, service, integration) with a temp database, and to run Bandit SAST.
+4. **Deployment:** The decision to split hosting (Render for app, Neon for DB) after discovering Render's free-tier DB expiry.
+5. **Written narrative:** The analysis in the Technical Report, Risk Register, and Maintenance Plan reflects the candidate's own understanding of Sommerville and Pressman course material.
+6. **Verification:** Every code path was executed, every test was run, every deployment was manually verified in a browser.
 
 ---
 
@@ -101,7 +100,7 @@ I, **Idris Muhammad Abubakar (P25EGCP9003)**, declare that:
 4. This declaration is made in accordance with COEN838 exam instruction F.
 
 **Signature:** ____Idris Muhammad Abubakar___________________  
-**Date:** October 2026
+**Date:** November 2026
 
 ---
 

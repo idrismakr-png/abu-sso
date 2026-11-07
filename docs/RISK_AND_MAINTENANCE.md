@@ -66,11 +66,11 @@ This allocation matches the industry pattern where **Perfective + Adaptive ≈ 7
 
 Every merge to `main` must satisfy:
 
-1. ✅ All **53+ automated tests** pass locally and in CI.
-2. ✅ Line **coverage ≥ 70%** (currently 96%).
-3. ✅ `bandit -r app/` reports **0 High/Medium findings**.
-4. ✅ `.env.example` reflects any new environment variables.
-5. ✅ `docs/SRS.md` and `docs/RTM.md` updated for any new Functional Requirement.
+1. All **53+ automated tests** pass locally and in CI.
+2. Line **coverage ≥ 70%** (currently 96%).
+3. `bandit -r app/` reports **0 High/Medium findings**.
+4. `.env.example` reflects any new environment variables.
+5. `docs/SRS.md` and `docs/RTM.md` updated for any new Functional Requirement.
 
 ### 2.4 Long-term Support Roadmap
 

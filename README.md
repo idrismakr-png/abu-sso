@@ -129,14 +129,14 @@ HTTP  →  Router  →  Service  →  Model  →  Database
         (thin)    (business)   (ORM)     (SQLite/PG)
 
 Plus six distributed services that trust the IdP:
-   ┌─────────────────────┐
-   │  ABU-SSO (IdP)      │  issues + verifies JWT
-   └─────────┬───────────┘
-             │
-   ┌─────────┼─────────────────────────────────────┐
-   │         │           │           │             │
-Portal    LMS       Library      Hostel    Wi-Fi    Results
-:4001    :4002      :4003        :4004     :4005     :4006
+                ┌─────────────────────┐
+                │  ABU-SSO (IdP)      │  issues + verifies JWT
+                └─────────┬───────────┘
+                          │
+   ┌────────────────────────────────────────────────┐
+   │        │        │          │         |         │
+  Portal   LMS     Library    Hostel    Wi-Fi     Results
+  :4001   :4002     :4003     :4004     :4005    :4006
 
 Each service verifies the token by calling the IdP's /auth/me — no shared session, no shared database.
 
