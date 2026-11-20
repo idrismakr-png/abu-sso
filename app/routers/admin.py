@@ -1,9 +1,9 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import OIDCClient
+from app.models import AuthenticationEvent, OIDCClient
 from app.schemas.admin import (
     AdminRoleUpdateRequest,
     AdminStats,
@@ -202,3 +202,57 @@ def change_application_status(
     return ApplicationRegistryView.model_validate(
         application
     )
+
+
+@router.get("/authentication-activity")
+def list_authentication_activity(
+    application: str | None = Query(default=None, max_length=150),
+    outcome: str | None = Query(default=None, pattern="^(success|failure)$"),
+    user_id: str | None = Query(default=None, max_length=36),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    """Inspect authentication events across ABU applications (admin only)."""
+
+    query = db.query(AuthenticationEvent)
+
+    if application:
+        query = query.filter(
+            AuthenticationEvent.application_name.ilike(
+                f"%{application}%"
+            )
+        )
+
+    if outcome:
+        query = query.filter(
+            AuthenticationEvent.outcome == outcome
+        )
+
+    if user_id:
+        query = query.filter(
+            AuthenticationEvent.user_id == user_id
+        )
+
+    events = (
+        query
+        .order_by(AuthenticationEvent.occurred_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        {
+            "id": event.id,
+            "user_id": event.user_id,
+            "client_id": event.client_id,
+            "application_name": event.application_name,
+            "event_type": event.event_type,
+            "outcome": event.outcome,
+            "authentication_method": event.authentication_method,
+            "ip_address": event.ip_address,
+            "user_agent": event.user_agent,
+            "failure_reason": event.failure_reason,
+            "occurred_at": event.occurred_at,
+        }
+        for event in events
+    ]
