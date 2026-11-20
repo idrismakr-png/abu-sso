@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     oidc_id_token_expire_minutes: int = 15
     oidc_authorization_code_expire_minutes: int = 5
 
+    # Central identity-provider browser session
+    oidc_idp_session_expire_hours: int = 12
+
     # Database
     database_url: str = "sqlite:///./abu_sso.db"
 

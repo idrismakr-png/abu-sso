@@ -1,3 +1,4 @@
+
 from collections import defaultdict
 
 from authlib.oauth2.rfc6749 import OAuth2Payload, OAuth2Request
@@ -26,7 +27,7 @@ class StarletteOAuth2Payload(OAuth2Payload):
 class ABUOAuth2Request(OAuth2Request):
     """OAuth2 request compatible with FastAPI and Starlette."""
 
-    def __init__(self, request, payload, form_data=None):
+    def __init__(self, request, payload, form_data=None, db=None):
         super().__init__(
             method=request.method,
             uri=str(request.url),
@@ -36,6 +37,7 @@ class ABUOAuth2Request(OAuth2Request):
         self.payload = StarletteOAuth2Payload(payload)
         self._args = request.query_params
         self._form_data = form_data or {}
+        self.database_session = db
 
     @property
     def args(self):
@@ -46,8 +48,11 @@ class ABUOAuth2Request(OAuth2Request):
         return self._form_data
 
 
-async def create_oauth2_request(request: Request) -> ABUOAuth2Request:
-    """Convert an incoming FastAPI request into an Authlib OAuth2 request."""
+async def create_oauth2_request(
+    request: Request,
+    db=None,
+) -> ABUOAuth2Request:
+    """Convert a FastAPI request and attach its database session."""
 
     form_data = {}
 
@@ -61,4 +66,5 @@ async def create_oauth2_request(request: Request) -> ABUOAuth2Request:
         request=request,
         payload=payload,
         form_data=form_data,
+        db=db,
     )

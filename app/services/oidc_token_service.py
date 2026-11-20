@@ -53,8 +53,14 @@ def generate_access_token(
     return token
 
 
-def persist_access_token(db, token, client_id, user_id):
-    """Persist an access token's hash without storing its raw value."""
+def persist_access_token(
+    db,
+    token,
+    client_id,
+    user_id,
+    commit=True,
+):
+    """Persist an access token hash, optionally within an existing transaction."""
 
     raw_token = token.get("access_token")
     lifetime = token.get("expires_in")
@@ -95,8 +101,12 @@ def persist_access_token(db, token, client_id, user_id):
 
     try:
         db.add(record)
-        db.commit()
-        db.refresh(record)
+        db.flush()
+
+        if commit:
+            db.commit()
+            db.refresh(record)
+
     except Exception:
         db.rollback()
         raise
