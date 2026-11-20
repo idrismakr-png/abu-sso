@@ -1,3 +1,4 @@
+
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -5,7 +6,15 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import Base, engine
-from app.models import User, Transaction, Wallet  # noqa: F401
+from app.models import (
+    User,
+    Transaction,
+    Wallet,
+    OIDCClient,
+    OIDCAuthorizationCode,
+    IdPSession,
+    AuthenticationEvent,
+)  # noqa: F401
 from app.routers import admin, auth, health, id_card, pages, wallet
 
 app = FastAPI(
@@ -14,6 +23,7 @@ app = FastAPI(
     version=settings.app_version,
 )
 
+# Create all registered database tables.
 Base.metadata.create_all(bind=engine)
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
