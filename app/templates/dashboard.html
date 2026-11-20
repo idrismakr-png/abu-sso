@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% block title %}Dashboard — ABU-SSO{% endblock %}
@@ -35,6 +36,24 @@
             <p><strong>Role:</strong> <span id="id-role">—</span></p>
             <p><strong>Email:</strong> <span id="id-email">—</span></p>
         </div>
+    </div>
+</div>
+
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <div>
+            <h2 style="margin-bottom:4px;">Security & Login Activity</h2>
+            <p style="color:#777; font-size:13px; margin-top:0;">
+                Recent sign-ins and access to connected ABU services.
+            </p>
+        </div>
+        <button id="refresh-activity" type="button"
+                style="margin-top:0; background:#0b3d91;">
+            Refresh
+        </button>
+    </div>
+    <div id="activity-list" aria-live="polite">
+        <p style="color:#777; font-size:13px;">Loading activity...</p>
     </div>
 </div>
 
@@ -78,6 +97,7 @@
 
 <script>
 const TOKEN = localStorage.getItem("abu_token");
+
 if (!TOKEN) {
     window.location.href = "/login";
 }
@@ -86,17 +106,21 @@ const authHeaders = { "Authorization": "Bearer " + TOKEN };
 
 async function api(path) {
     const res = await fetch(path, { headers: authHeaders });
+
     if (res.status === 401) {
         localStorage.removeItem("abu_token");
         window.location.href = "/login";
         return null;
     }
-    if (!res.ok) throw new Error("Failed: " + path);
+
+    if (!res.ok) {
+        throw new Error("Failed: " + path);
+    }
+
     return res.json();
 }
 
 function wireServiceLinks() {
-    // Auto-detect environment: local vs Render production
     const isProd = window.location.hostname.includes("onrender.com");
 
     const services = isProd ? {
@@ -117,6 +141,7 @@ function wireServiceLinks() {
 
     for (const [id, baseUrl] of Object.entries(services)) {
         const el = document.getElementById(id);
+
         if (el) {
             el.href = baseUrl + "/?token=" + encodeURIComponent(TOKEN);
             el.target = "_blank";
@@ -129,10 +154,14 @@ function wireServiceLinks() {
 async function loadProfile() {
     const me = await api("/auth/me");
     if (!me) return;
-    document.getElementById("welcome").textContent = "Welcome, " + (me.full_name || me.email);
+
+    document.getElementById("welcome").textContent =
+        "Welcome, " + (me.full_name || me.email);
+
     document.getElementById("role-line").textContent =
         me.role.charAt(0).toUpperCase() + me.role.slice(1) +
         (me.matric_no ? " • " + me.matric_no : "");
+
     document.getElementById("id-name").textContent = me.full_name || "—";
     document.getElementById("id-matric").textContent = me.matric_no || "—";
     document.getElementById("id-role").textContent = me.role;
@@ -146,14 +175,17 @@ async function loadProfile() {
 async function loadWallet() {
     const wallet = await api("/wallet");
     if (!wallet) return;
+
     document.getElementById("balance").textContent = "₦" + wallet.balance;
 
     const txns = await api("/wallet/transactions");
     const box = document.getElementById("txn-list");
+
     if (!txns || txns.length === 0) {
-        box.innerHTML = '<p style="color:#777; font-size:13px;">No transactions yet.</p>';
+        box.textContent = "No transactions yet.";
         return;
     }
+
     box.innerHTML = txns.map(t => `
         <div class="txn-row">
             <span>${t.description || t.type}</span>
@@ -167,12 +199,90 @@ async function loadWallet() {
 async function loadIdCard() {
     const card = await api("/id-card");
     if (!card) return;
+
     document.getElementById("qr-img").src = card.qr_data_url;
 }
 
-document.getElementById("logout-btn").addEventListener("click", () => {
-    localStorage.removeItem("abu_token");
-    window.location.href = "/login";
+function formatActivityDate(value) {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "Date unavailable";
+    }
+
+    return date.toLocaleString();
+}
+
+async function loadAuthenticationActivity() {
+    const box = document.getElementById("activity-list");
+    box.textContent = "Loading activity...";
+
+    try {
+        const activities = await api("/auth/activity?limit=50");
+        if (!activities) return;
+
+        if (activities.length === 0) {
+            box.textContent = "No authentication activity recorded yet.";
+            return;
+        }
+
+        box.replaceChildren();
+
+        activities.forEach(activity => {
+            const row = document.createElement("div");
+            row.style.cssText =
+                "padding:12px 0; border-bottom:1px solid #eee;";
+
+            const heading = document.createElement("div");
+            heading.style.cssText =
+                "display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;";
+
+            const appName = document.createElement("strong");
+            appName.textContent =
+                activity.application_name || "ABU application";
+
+            const status = document.createElement("span");
+            status.textContent =
+                activity.outcome === "success" ? "Successful" : "Failed";
+            status.style.color =
+                activity.outcome === "success" ? "#188038" : "#b71c1c";
+
+            const details = document.createElement("p");
+            details.style.cssText =
+                "margin:5px 0 0; color:#666; font-size:13px;";
+
+            const method = activity.authentication_method
+                ? activity.authentication_method.replaceAll("_", " ")
+                : "Authentication method unavailable";
+
+            details.textContent =
+                activity.event_type + " • " + method +
+                " • " + formatActivityDate(activity.occurred_at);
+
+            heading.append(appName, status);
+            row.append(heading, details);
+            box.appendChild(row);
+        });
+    } catch (error) {
+        box.textContent = "Unable to load authentication activity. Please try again.";
+    }
+}
+
+document.getElementById("refresh-activity").addEventListener(
+    "click",
+    loadAuthenticationActivity
+);
+
+document.getElementById("logout-btn").addEventListener("click", async () => {
+    try {
+        await fetch("/auth/logout", {
+            method: "POST",
+            headers: authHeaders
+        });
+    } finally {
+        localStorage.removeItem("abu_token");
+        window.location.href = "/login";
+    }
 });
 
 (async () => {
@@ -181,6 +291,7 @@ document.getElementById("logout-btn").addEventListener("click", () => {
         await loadProfile();
         await loadWallet();
         await loadIdCard();
+        await loadAuthenticationActivity();
     } catch (err) {
         const box = document.getElementById("error-box");
         box.textContent = err.message;

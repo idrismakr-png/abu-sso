@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models import AuthenticationEvent
 from app.models.user import User
 from app.models.idp_login_marker import IdPLoginMarker
+from app.schemas.authentication_activity import AuthenticationActivityView
 from app.schemas.user import Token, UserCreate, UserLogin, UserRead
 from app.services.idp_session_service import (
     create_idp_session,
@@ -92,8 +93,6 @@ def login(
     user_agent = request.headers.get("user-agent")
 
     if not user:
-        # Link the event to an account only if the submitted
-        # matriculation/staff number identifies an existing user.
         known_user = get_user_by_matric(
             db,
             payload.matric_no,
@@ -128,7 +127,6 @@ def login(
         user_agent=user_agent,
     )
 
-    # Mark this session as having originated from a fresh password login.
     login_marker = IdPLoginMarker(
         session_id=session_record.id,
     )
@@ -201,3 +199,25 @@ def logout(
 def me(current_user=Depends(get_current_user)):
     """Return the currently authenticated user's profile."""
     return current_user
+
+
+@router.get(
+    "/activity",
+    response_model=list[AuthenticationActivityView],
+)
+def get_authentication_activity(
+    limit: int = Query(default=50, ge=1, le=100),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return recent authentication events belonging to the current user."""
+
+    return (
+        db.query(AuthenticationEvent)
+        .filter(
+            AuthenticationEvent.user_id == current_user.id
+        )
+        .order_by(AuthenticationEvent.occurred_at.desc())
+        .limit(limit)
+        .all()
+    )
