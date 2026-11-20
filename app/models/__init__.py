@@ -9,6 +9,7 @@ from app.models.oidc import (
 )
 from app.models.oidc_token import OIDCAccessToken
 from app.models.idp_login_marker import IdPLoginMarker
+from app.models.security_notification import SecurityNotification
 
 __all__ = [
     "User",
@@ -20,4 +21,5 @@ __all__ = [
     "AuthenticationEvent",
     "OIDCAccessToken",
     "IdPLoginMarker",
+    "SecurityNotification",
 ]

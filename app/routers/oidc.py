@@ -24,6 +24,9 @@ from app.services.oidc_token_service import (
     get_userinfo_for_access_token,
     revoke_access_token,
 )
+from app.services.security_notification_service import (
+    create_authentication_notification,
+)
 from app.utils.oidc_keys import get_jwks
 from app.utils.oidc_requests import create_oauth2_request
 
@@ -248,22 +251,29 @@ async def authorize(
                     else "existing_sso_session"
                 )
 
-                db.add(
-                    AuthenticationEvent(
-                        user_id=user.id,
-                        client_id=client.client_id,
-                        application_name=client.name,
-                        event_type="authorization",
-                        outcome="success",
-                        authentication_method=authentication_method,
-                        ip_address=(
-                            request.client.host
-                            if request.client
-                            else None
-                        ),
-                        user_agent=request.headers.get("user-agent"),
-                    )
+                event = AuthenticationEvent(
+                    user_id=user.id,
+                    client_id=client.client_id,
+                    application_name=client.name,
+                    event_type="authorization",
+                    outcome="success",
+                    authentication_method=authentication_method,
+                    ip_address=(
+                        request.client.host
+                        if request.client
+                        else None
+                    ),
+                    user_agent=request.headers.get("user-agent"),
                 )
+
+                db.add(event)
+                db.flush()
+
+                create_authentication_notification(
+                    db,
+                    event,
+                )
+
                 db.commit()
 
     return response

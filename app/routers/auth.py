@@ -1,13 +1,16 @@
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import AuthenticationEvent
+from app.models import AuthenticationEvent, SecurityNotification
 from app.models.user import User
 from app.models.idp_login_marker import IdPLoginMarker
 from app.schemas.authentication_activity import AuthenticationActivityView
+from app.schemas.security_notification import SecurityNotificationView
 from app.schemas.user import Token, UserCreate, UserLogin, UserRead
 from app.services.idp_session_service import (
     create_idp_session,
@@ -221,3 +224,59 @@ def get_authentication_activity(
         .limit(limit)
         .all()
     )
+
+
+@router.get(
+    "/notifications",
+    response_model=list[SecurityNotificationView],
+)
+def get_security_notifications(
+    limit: int = Query(default=20, ge=1, le=100),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return security notifications belonging only to the current user."""
+
+    return (
+        db.query(SecurityNotification)
+        .filter(
+            SecurityNotification.user_id == current_user.id
+        )
+        .order_by(SecurityNotification.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+@router.patch(
+    "/notifications/{notification_id}/read",
+    response_model=SecurityNotificationView,
+)
+def mark_security_notification_as_read(
+    notification_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Mark one of the current user's notifications as read."""
+
+    notification = (
+        db.query(SecurityNotification)
+        .filter(
+            SecurityNotification.id == notification_id,
+            SecurityNotification.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if notification is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found",
+        )
+
+    if notification.read_at is None:
+        notification.read_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(notification)
+
+    return notification
