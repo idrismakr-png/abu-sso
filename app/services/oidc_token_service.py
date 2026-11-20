@@ -197,3 +197,51 @@ def get_userinfo_for_access_token(
         claims["email"] = user.email
 
     return claims
+
+
+def revoke_access_token(
+    db: Session,
+    raw_token: str,
+    client_id: str,
+):
+    """
+    Revoke an access token belonging to the specified OIDC client.
+
+    Only the token hash is used for lookup. The raw token is never stored.
+    Returns True when a token is revoked and False when no matching
+    active token exists.
+    """
+
+    if (
+        not isinstance(raw_token, str)
+        or not raw_token
+        or not isinstance(client_id, str)
+        or not client_id
+    ):
+        return False
+
+    token_hash = hashlib.sha256(
+        raw_token.encode("utf-8")
+    ).hexdigest()
+
+    token_record = (
+        db.query(OIDCAccessToken)
+        .filter_by(
+            token_hash=token_hash,
+            client_id=client_id,
+            revoked_at=None,
+        )
+        .first()
+    )
+
+    if token_record is None:
+        return False
+
+    try:
+        token_record.revoked_at = utcnow()
+        db.commit()
+        return True
+
+    except Exception:
+        db.rollback()
+        raise
