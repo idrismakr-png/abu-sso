@@ -1,3 +1,4 @@
+
 # Python
 __pycache__/
 *.py[cod]
@@ -10,6 +11,13 @@ venv/
 # Environment variables
 .env
 .env.local
+
+# Cryptographic keys and secrets
+keys/
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Database
 *.db
@@ -26,6 +34,7 @@ Thumbs.db
 
 # Logs
 *.log
+
 # Coverage
 .coverage
 htmlcov/
