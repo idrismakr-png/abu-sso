@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -15,7 +14,7 @@ from app.models import (
     IdPSession,
     AuthenticationEvent,
 )  # noqa: F401
-from app.routers import admin, auth, health, id_card, pages, wallet
+from app.routers import admin, auth, health, id_card, oidc, pages, wallet
 
 app = FastAPI(
     title=settings.app_name,
@@ -34,6 +33,7 @@ app.include_router(auth.router)
 app.include_router(id_card.router)
 app.include_router(wallet.router)
 app.include_router(admin.router)
+app.include_router(oidc.router)
 app.include_router(pages.router)
 
 
