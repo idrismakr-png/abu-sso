@@ -1,3 +1,4 @@
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,10 +9,25 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = True
 
-    # JWT settings
+    # Legacy JWT settings
+    # Retained to avoid breaking the existing authentication system.
     jwt_secret: str = "change-me-in-production-with-a-much-longer-key-please-min-32-bytes"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
+
+    # OpenID Connect (OIDC) identity provider settings
+    oidc_issuer: str = "http://localhost:8000"
+    oidc_signing_algorithm: str = "RS256"
+    oidc_key_id: str = "abu-sso-rsa-2026"
+
+    # RSA signing key locations
+    oidc_private_key_path: str = "keys/abu_sso_private.pem"
+    oidc_public_key_path: str = "keys/abu_sso_public.pem"
+
+    # OIDC token and authorization lifetimes
+    oidc_access_token_expire_minutes: int = 15
+    oidc_id_token_expire_minutes: int = 15
+    oidc_authorization_code_expire_minutes: int = 5
 
     # Database
     database_url: str = "sqlite:///./abu_sso.db"
