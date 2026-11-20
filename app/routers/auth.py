@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
+from app.models import AuthenticationEvent
 from app.models.user import User
 from app.models.idp_login_marker import IdPLoginMarker
 from app.schemas.user import Token, UserCreate, UserLogin, UserRead
@@ -11,7 +12,11 @@ from app.services.idp_session_service import (
     create_idp_session,
     revoke_idp_session,
 )
-from app.services.user_service import authenticate_user, create_user
+from app.services.user_service import (
+    authenticate_user,
+    create_user,
+    get_user_by_matric,
+)
 from app.utils.jwt import create_access_token, get_current_user
 
 router = APIRouter(
@@ -71,7 +76,7 @@ def login(
     response: Response,
     db: Session = Depends(get_db),
 ):
-    """Authenticate a user and establish JWT and central IdP sessions."""
+    """Authenticate a user and audit the password login attempt."""
 
     user = authenticate_user(
         db,
@@ -79,7 +84,36 @@ def login(
         payload.password,
     )
 
+    ip_address = (
+        request.client.host
+        if request.client
+        else None
+    )
+    user_agent = request.headers.get("user-agent")
+
     if not user:
+        # Link the event to an account only if the submitted
+        # matriculation/staff number identifies an existing user.
+        known_user = get_user_by_matric(
+            db,
+            payload.matric_no,
+        )
+
+        db.add(
+            AuthenticationEvent(
+                user_id=known_user.id if known_user else None,
+                client_id=None,
+                application_name="ABU-SSO Portal",
+                event_type="login",
+                outcome="failure",
+                authentication_method="password",
+                ip_address=ip_address,
+                user_agent=user_agent,
+                failure_reason="invalid_credentials",
+            )
+        )
+        db.commit()
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid matric/staff number or password",
@@ -90,12 +124,8 @@ def login(
     session_record, session_token = create_idp_session(
         db=db,
         user=user,
-        ip_address=(
-            request.client.host
-            if request.client
-            else None
-        ),
-        user_agent=request.headers.get("user-agent"),
+        ip_address=ip_address,
+        user_agent=user_agent,
     )
 
     # Mark this session as having originated from a fresh password login.
@@ -105,7 +135,22 @@ def login(
 
     try:
         db.add(login_marker)
+
+        db.add(
+            AuthenticationEvent(
+                user_id=user.id,
+                client_id=None,
+                application_name="ABU-SSO Portal",
+                event_type="login",
+                outcome="success",
+                authentication_method="password",
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        )
+
         db.commit()
+
     except Exception:
         db.rollback()
         raise
