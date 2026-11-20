@@ -6,6 +6,7 @@ from app.models.oidc import (
     IdPSession,
     AuthenticationEvent,
 )
+from app.models.oidc_token import OIDCAccessToken
 
 __all__ = [
     "User",
@@ -15,4 +16,5 @@ __all__ = [
     "OIDCAuthorizationCode",
     "IdPSession",
     "AuthenticationEvent",
+    "OIDCAccessToken",
 ]
