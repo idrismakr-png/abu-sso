@@ -3,13 +3,24 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy.orm import Session
+
 from app.config import settings
+from app.models import OIDCClient, User
 from app.models.oidc_token import OIDCAccessToken
 
 
 def utcnow():
     """Return the current UTC timestamp."""
     return datetime.now(timezone.utc)
+
+
+def _as_utc(value):
+    """Convert a database timestamp to a timezone-aware UTC timestamp."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+
+    return value.astimezone(timezone.utc)
 
 
 def generate_access_token(
@@ -112,3 +123,77 @@ def persist_access_token(
         raise
 
     return record
+
+
+def get_userinfo_for_access_token(
+    db: Session,
+    raw_token: str,
+):
+    """
+    Validate an opaque access token and return its permitted OIDC user claims.
+
+    Invalid, expired, revoked, or inactive credentials return None.
+    """
+
+    if not isinstance(raw_token, str) or not raw_token:
+        return None
+
+    token_hash = hashlib.sha256(
+        raw_token.encode("utf-8")
+    ).hexdigest()
+
+    token_record = (
+        db.query(OIDCAccessToken)
+        .filter_by(
+            token_hash=token_hash,
+            revoked_at=None,
+        )
+        .first()
+    )
+
+    if token_record is None:
+        return None
+
+    if _as_utc(token_record.expires_at) <= utcnow():
+        return None
+
+    client = (
+        db.query(OIDCClient)
+        .filter_by(
+            client_id=token_record.client_id,
+            is_active=True,
+        )
+        .first()
+    )
+
+    if client is None:
+        return None
+
+    user = (
+        db.query(User)
+        .filter_by(
+            id=token_record.user_id,
+            is_active=True,
+        )
+        .first()
+    )
+
+    if user is None:
+        return None
+
+    scopes = set(token_record.scopes or [])
+
+    if "openid" not in scopes:
+        return None
+
+    claims = {
+        "sub": user.id,
+    }
+
+    if "profile" in scopes and user.full_name:
+        claims["name"] = user.full_name
+
+    if "email" in scopes:
+        claims["email"] = user.email
+
+    return claims

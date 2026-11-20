@@ -1,7 +1,7 @@
 
 from urllib.parse import parse_qs, urlencode, urlsplit
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,9 @@ from app.database import get_db
 from app.models import AuthenticationEvent
 from app.services.idp_session_service import get_active_idp_session
 from app.services.oidc_server import create_authorization_server
+from app.services.oidc_token_service import (
+    get_userinfo_for_access_token,
+)
 from app.utils.oidc_keys import get_jwks
 from app.utils.oidc_requests import create_oauth2_request
 
@@ -25,6 +28,7 @@ def openid_configuration():
         "issuer": issuer,
         "authorization_endpoint": f"{issuer}/authorize",
         "token_endpoint": f"{issuer}/token",
+        "userinfo_endpoint": f"{issuer}/userinfo",
         "jwks_uri": f"{issuer}/jwks.json",
         "response_types_supported": ["code"],
         "response_modes_supported": ["query"],
@@ -140,6 +144,40 @@ async def token(
     return server.create_token_response(
         request=oauth_request,
     )
+
+
+@router.get("/userinfo", tags=["OIDC"])
+def userinfo(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    authorization = request.headers.get("Authorization", "")
+    parts = authorization.split()
+
+    if (
+        len(parts) != 2
+        or parts[0].lower() != "bearer"
+        or not parts[1]
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="A valid bearer access token is required.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    claims = get_userinfo_for_access_token(
+        db=db,
+        raw_token=parts[1],
+    )
+
+    if claims is None:
+        raise HTTPException(
+            status_code=401,
+            detail="The access token is invalid, expired, or revoked.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return claims
 
 
 @router.get("/jwks.json", tags=["OIDC"])
