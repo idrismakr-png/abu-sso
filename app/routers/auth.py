@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
+from app.models.idp_login_marker import IdPLoginMarker
 from app.schemas.user import Token, UserCreate, UserLogin, UserRead
 from app.services.idp_session_service import (
     create_idp_session,
@@ -86,7 +87,7 @@ def login(
 
     token = create_access_token(user.id)
 
-    _, session_token = create_idp_session(
+    session_record, session_token = create_idp_session(
         db=db,
         user=user,
         ip_address=(
@@ -96,6 +97,18 @@ def login(
         ),
         user_agent=request.headers.get("user-agent"),
     )
+
+    # Mark this session as having originated from a fresh password login.
+    login_marker = IdPLoginMarker(
+        session_id=session_record.id,
+    )
+
+    try:
+        db.add(login_marker)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
     response.set_cookie(
         key="abu_idp_session",

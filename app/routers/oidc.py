@@ -15,6 +15,9 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models import AuthenticationEvent, OIDCClient
+from app.services.idp_login_marker_service import (
+    consume_fresh_login_marker,
+)
 from app.services.idp_session_service import get_active_idp_session
 from app.services.oidc_server import create_authorization_server
 from app.services.oidc_token_service import (
@@ -105,10 +108,7 @@ def authenticate_revocation_client(request, form, db):
             detail="Client authentication failed.",
         )
 
-    if (
-        client.token_endpoint_auth_method
-        != authentication_method
-    ):
+    if client.token_endpoint_auth_method != authentication_method:
         raise HTTPException(
             status_code=401,
             detail="Client authentication method is not permitted.",
@@ -217,7 +217,6 @@ async def authorize(
         )
 
     session_record, user = session_result
-
     oauth_request.user = user
 
     server = create_authorization_server(db)
@@ -238,6 +237,17 @@ async def authorize(
             client = getattr(oauth_request, "client", None)
 
             if client is not None:
+                is_fresh_login = consume_fresh_login_marker(
+                    db,
+                    session_record.id,
+                )
+
+                authentication_method = (
+                    "fresh_password_login"
+                    if is_fresh_login
+                    else "existing_sso_session"
+                )
+
                 db.add(
                     AuthenticationEvent(
                         user_id=user.id,
@@ -245,7 +255,7 @@ async def authorize(
                         application_name=client.name,
                         event_type="authorization",
                         outcome="success",
-                        authentication_method="existing_sso_session",
+                        authentication_method=authentication_method,
                         ip_address=(
                             request.client.host
                             if request.client

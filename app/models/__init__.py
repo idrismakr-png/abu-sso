@@ -1,4 +1,5 @@
-﻿from app.models.user import User
+﻿
+from app.models.user import User
 from app.models.wallet import Transaction, Wallet
 from app.models.oidc import (
     OIDCClient,
@@ -7,6 +8,7 @@ from app.models.oidc import (
     AuthenticationEvent,
 )
 from app.models.oidc_token import OIDCAccessToken
+from app.models.idp_login_marker import IdPLoginMarker
 
 __all__ = [
     "User",
@@ -17,4 +19,5 @@ __all__ = [
     "IdPSession",
     "AuthenticationEvent",
     "OIDCAccessToken",
+    "IdPLoginMarker",
 ]

@@ -1,9 +1,9 @@
 
 from app.models import IdPSession, User
+from app.models.idp_login_marker import IdPLoginMarker
 
 
 def test_successful_login_creates_secure_idp_session(client, db):
-    # Register a test account.
     registration = client.post(
         "/auth/register",
         json={
@@ -17,7 +17,6 @@ def test_successful_login_creates_secure_idp_session(client, db):
 
     assert registration.status_code == 201
 
-    # Log in using the registered credentials.
     response = client.post(
         "/auth/login",
         json={
@@ -29,7 +28,6 @@ def test_successful_login_creates_secure_idp_session(client, db):
     assert response.status_code == 200
     assert "access_token" in response.json()
 
-    # Confirm that the central IdP cookie was issued.
     cookie = response.cookies.get("abu_idp_session")
 
     assert cookie
@@ -40,7 +38,6 @@ def test_successful_login_creates_secure_idp_session(client, db):
     assert "httponly" in set_cookie
     assert "samesite=lax" in set_cookie
 
-    # Confirm that the database stores only the token hash.
     user = db.query(User).filter_by(
         matric_no="OIDC/SESSION/001"
     ).one()
@@ -52,3 +49,11 @@ def test_successful_login_creates_secure_idp_session(client, db):
     assert session_record.session_token_hash != cookie
     assert session_record.revoked_at is None
     assert session_record.expires_at is not None
+
+    # Confirm that the new password login created one marker.
+    marker = db.query(IdPLoginMarker).filter_by(
+        session_id=session_record.id
+    ).one()
+
+    assert marker.session_id == session_record.id
+    assert marker.consumed_at is None
