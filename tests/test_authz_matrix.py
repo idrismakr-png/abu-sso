@@ -127,7 +127,14 @@ MOCK_SERVICES = [
     "results",
 ]
 
-OIDC_SERVICES = ["portal", "lms", "library"]
+OIDC_SERVICES = [
+    "portal",
+    "lms",
+    "library",
+    "hostel",
+    "wifi",
+    "results",
+]
 
 
 def _load_mock_app(service):
@@ -162,29 +169,3 @@ def test_oidc_service_does_not_accept_legacy_token_query(service):
         res = client.get("/?token=fake-token")
         assert res.status_code == 303
         assert res.headers["location"] == "/login"
-
-
-LEGACY_TOKEN_SERVICES = [
-    service for service in MOCK_SERVICES
-    if service not in OIDC_SERVICES
-]
-
-
-@pytest.mark.parametrize("service", LEGACY_TOKEN_SERVICES)
-def test_legacy_mock_service_requires_token(service):
-    app = _load_mock_app(service)
-    with TestClient(app) as client:
-        res = client.get("/")
-        assert res.status_code == 401, (
-            f"{service} did not require token"
-        )
-
-
-@pytest.mark.parametrize("service", LEGACY_TOKEN_SERVICES)
-def test_legacy_mock_service_rejects_invalid_token(service):
-    app = _load_mock_app(service)
-    with TestClient(app) as client:
-        res = client.get("/?token=fake-token")
-        assert res.status_code in (401, 503), (
-            f"{service} accepted invalid token"
-        )
