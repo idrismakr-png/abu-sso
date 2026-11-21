@@ -37,6 +37,10 @@ if not SESSION_SECRET:
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
+# One-time server-side tickets prevent replay of a browser session cookie.
+PENDING_LANDINGS: dict[str, tuple[str, float]] = {}
+LANDING_TICKET_TTL_SECONDS = 30
+
 app = FastAPI(title=f"{SERVICE_NAME} (OIDC Client)")
 
 app.add_middleware(
@@ -65,17 +69,27 @@ oauth.register(
 
 
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    user = request.session.get("user")
+async def home(request: Request, landing: str = ""):
+    # A service-local session is not sufficient. The OIDC callback must
+    # issue a fresh, unconsumed server-side landing ticket.
+    now = time.monotonic()
+    expired = [
+        ticket for ticket, (_, created_at) in PENDING_LANDINGS.items()
+        if now - created_at > LANDING_TICKET_TTL_SECONDS
+    ]
+    for ticket in expired:
+        PENDING_LANDINGS.pop(ticket, None)
 
-    # Permit only the immediate landing after the OIDC callback.
-    # Every later visit must re-check the central identity provider.
-    if not user or not request.session.pop("allow_home_once", False):
+    pending = PENDING_LANDINGS.pop(landing, None) if landing else None
+    user = request.session.get("user")
+    if (
+        pending is None
+        or now - pending[1] > LANDING_TICKET_TTL_SECONDS
+        or not user
+        or user.get("id") != pending[0]
+    ):
         request.session.clear()
-        return RedirectResponse(
-            url="/login",
-            status_code=303,
-        )
+        return RedirectResponse(url="/login", status_code=303)
 
     return templates.TemplateResponse(
         request,
@@ -85,9 +99,9 @@ async def home(request: Request):
             "service_color": SERVICE_COLOR,
             "service_description": SERVICE_DESCRIPTION,
             "user": user,
+            "token": None,
         },
     )
-
 
 @app.get("/login")
 async def login(request: Request):
@@ -126,10 +140,14 @@ async def auth_callback(request: Request):
             "matric_no": "Not supplied by OIDC userinfo",
         }
         request.session["idp_verified_at"] = time.time()
-        request.session["allow_home_once"] = True
+        landing_ticket = secrets.token_urlsafe(32)
+        PENDING_LANDINGS[landing_ticket] = (
+            profile["sub"],
+            time.monotonic(),
+        )
 
         return RedirectResponse(
-            url="/",
+            url=f"/?landing={landing_ticket}",
             status_code=303,
         )
 
