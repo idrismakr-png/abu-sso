@@ -127,6 +127,8 @@ MOCK_SERVICES = [
     "results",
 ]
 
+OIDC_SERVICES = ["portal", "lms"]
+
 
 def _load_mock_app(service):
     path = (
@@ -144,16 +146,18 @@ def _load_mock_app(service):
     return mod.app
 
 
-def test_portal_redirects_unauthenticated_visitors_to_login():
-    app = _load_mock_app("portal")
+@pytest.mark.parametrize("service", OIDC_SERVICES)
+def test_oidc_service_redirects_unauthenticated_visitors_to_login(service):
+    app = _load_mock_app(service)
     with TestClient(app, follow_redirects=False) as client:
         res = client.get("/")
         assert res.status_code == 303
         assert res.headers["location"] == "/login"
 
 
-def test_portal_does_not_accept_legacy_token_query():
-    app = _load_mock_app("portal")
+@pytest.mark.parametrize("service", OIDC_SERVICES)
+def test_oidc_service_does_not_accept_legacy_token_query(service):
+    app = _load_mock_app(service)
     with TestClient(app, follow_redirects=False) as client:
         res = client.get("/?token=fake-token")
         assert res.status_code == 303
@@ -161,7 +165,8 @@ def test_portal_does_not_accept_legacy_token_query():
 
 
 LEGACY_TOKEN_SERVICES = [
-    service for service in MOCK_SERVICES if service != "portal"
+    service for service in MOCK_SERVICES
+    if service not in OIDC_SERVICES
 ]
 
 
