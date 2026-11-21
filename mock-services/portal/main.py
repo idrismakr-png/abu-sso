@@ -1,6 +1,7 @@
 
 """Student Portal — OIDC client for the central ABU-SSO identity provider."""
 
+import logging
 import os
 import secrets
 from pathlib import Path
@@ -18,6 +19,8 @@ REDIRECT_URI = os.getenv(
     "http://127.0.0.1:4001/auth/callback",
 )
 SESSION_SECRET = os.getenv("SESSION_SECRET", "")
+
+logger = logging.getLogger(__name__)
 
 SERVICE_NAME = "Student Portal"
 SERVICE_COLOR = "#0b3d91"
@@ -133,7 +136,13 @@ async def auth_callback(request: Request):
 
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        logger.exception(
+            "OIDC callback failed for %s (%s): %s",
+            SERVICE_NAME,
+            type(exc).__name__,
+            str(exc),
+        )
         request.session.clear()
         raise HTTPException(
             status_code=401,
