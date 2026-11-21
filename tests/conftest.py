@@ -1,4 +1,6 @@
+
 """Shared pytest fixtures for ABU-SSO tests (unit + service + integration + E2E)."""
+import base64
 import os
 import subprocess
 import sys
@@ -8,6 +10,8 @@ from pathlib import Path
 
 import httpx
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -17,8 +21,36 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# Test-only environment configuration.
 os.environ["ALLOW_PUBLIC_REGISTRATION"] = "true"
 os.environ["JWT_SECRET"] = "test-secret-key-with-at-least-32-bytes-length-ok"
+os.environ["OIDC_CLIENT_ID"] = "abu-sso-ci-test-client"
+
+# Generate an ephemeral RSA key pair for OIDC token-signing tests.
+# These keys exist only during the test process and are never committed.
+_test_private_key = rsa.generate_private_key(
+    public_exponent=65537,
+    key_size=2048,
+)
+
+_test_private_pem = _test_private_key.private_bytes(
+    encoding=serialization.Encoding.PEM,
+    format=serialization.PrivateFormat.PKCS8,
+    encryption_algorithm=serialization.NoEncryption(),
+)
+
+_test_public_pem = _test_private_key.public_key().public_bytes(
+    encoding=serialization.Encoding.PEM,
+    format=serialization.PublicFormat.SubjectPublicKeyInfo,
+)
+
+os.environ["OIDC_PRIVATE_KEY_B64"] = base64.b64encode(
+    _test_private_pem
+).decode("ascii")
+
+os.environ["OIDC_PUBLIC_KEY_B64"] = base64.b64encode(
+    _test_public_pem
+).decode("ascii")
 
 import app.database as db_module  # noqa: E402
 from app.database import Base, get_db  # noqa: E402
