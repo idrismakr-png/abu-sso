@@ -233,10 +233,7 @@ async def authorize(
             urlsplit(location).query
         )
 
-        if (
-            "code" in response_parameters
-            and "none" not in prompt_values
-        ):
+        if "code" in response_parameters:
             client = getattr(oauth_request, "client", None)
 
             if client is not None:
@@ -245,32 +242,34 @@ async def authorize(
                     session_record.id,
                 )
 
-                authentication_method = (
-                    "fresh_password_login"
-                    if is_fresh_login
-                    else "existing_sso_session"
-                )
+                # Record the first service access after a fresh password login.
+                # Suppress subsequent prompt=none revalidation checks so the
+                # audit log reflects meaningful access rather than polling.
+                if is_fresh_login or "none" not in prompt_values:
+                    authentication_method = (
+                        "fresh_password_login"
+                        if is_fresh_login
+                        else "existing_sso_session"
+                    )
 
-                event = AuthenticationEvent(
-                    user_id=user.id,
-                    client_id=client.client_id,
-                    application_name=client.name,
-                    event_type="authorization",
-                    outcome="success",
-                    authentication_method=authentication_method,
-                    ip_address=(
-                        request.client.host
-                        if request.client
-                        else None
-                    ),
-                    user_agent=request.headers.get("user-agent"),
-                )
+                    event = AuthenticationEvent(
+                        user_id=user.id,
+                        client_id=client.client_id,
+                        application_name=client.name,
+                        event_type="authorization",
+                        outcome="success",
+                        authentication_method=authentication_method,
+                        ip_address=(
+                            request.client.host
+                            if request.client
+                            else None
+                        ),
+                        user_agent=request.headers.get("user-agent"),
+                    )
 
-                db.add(event)
-                db.flush()
-
-
-                db.commit()
+                    db.add(event)
+                    db.flush()
+                    db.commit()
 
     return response
 
