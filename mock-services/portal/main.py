@@ -48,7 +48,7 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=SESSION_SECRET,
     session_cookie="abu_portal_session",
-    max_age=15,
+    max_age=600,
     same_site="lax",
     https_only=IDP_URL.startswith("https://"),
 )
