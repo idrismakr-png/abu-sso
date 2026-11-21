@@ -218,7 +218,8 @@ def get_authentication_activity(
     return (
         db.query(AuthenticationEvent)
         .filter(
-            AuthenticationEvent.user_id == current_user.id
+            AuthenticationEvent.user_id == current_user.id,
+            AuthenticationEvent.event_type == "login",
         )
         .order_by(AuthenticationEvent.occurred_at.desc())
         .limit(limit)
