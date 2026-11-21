@@ -386,7 +386,8 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
         await loadProfile();
         await loadWallet();
         await loadIdCard();
-        await loadAuthenticationActivity();\n        await loadSecurityNotifications();
+        await loadAuthenticationActivity();
+        await loadSecurityNotifications();
     } catch (err) {
         const box = document.getElementById("error-box");
         box.textContent = err.message;

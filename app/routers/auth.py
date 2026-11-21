@@ -12,7 +12,10 @@ from app.models.idp_login_marker import IdPLoginMarker
 from app.schemas.authentication_activity import AuthenticationActivityView
 from app.schemas.security_notification import SecurityNotificationView
 from app.schemas.user import Token, UserCreate, UserLogin, UserRead
-from app.services.security_notification_service import (\n    create_authentication_notification,\n)\nfrom app.services.idp_session_service import (
+from app.services.security_notification_service import (
+    create_authentication_notification,
+)
+from app.services.idp_session_service import (
     create_idp_session,
     revoke_idp_session,
 )
