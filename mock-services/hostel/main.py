@@ -92,7 +92,7 @@ async def auth_callback(request: Request):
     try:
         token = await oauth.abu_sso.authorize_access_token(request)
         response = await oauth.abu_sso.get(
-            "userinfo",
+            f"{IDP_URL}/userinfo",
             token=token,
         )
         response.raise_for_status()
