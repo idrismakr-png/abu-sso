@@ -2,6 +2,7 @@
 """Student Portal — OIDC client for the central ABU-SSO identity provider."""
 
 import os
+import secrets
 from pathlib import Path
 
 from authlib.integrations.starlette_client import OAuth
@@ -90,9 +91,11 @@ async def home(request: Request):
 async def login(request: Request):
     redirect_uri = REDIRECT_URI
 
+    nonce = secrets.token_urlsafe(32)
     return await oauth.abu_sso.authorize_redirect(
         request,
         redirect_uri,
+        nonce=nonce,
     )
 
 
