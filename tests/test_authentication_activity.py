@@ -64,11 +64,14 @@ def test_student_can_view_own_authentication_activity(client, db):
 
     activities = response.json()
 
-    assert len(activities) == 3
+    # One latest central login plus one latest successful access per service.
+    assert len(activities) == 2
     assert activities[0]["application_name"] == "ABU-SSO Portal"
     assert activities[0]["event_type"] == "login"
     assert activities[0]["outcome"] == "success"
     assert activities[0]["authentication_method"] == "password"
+    assert activities[1]["application_name"] == "Learning Management System"
+    assert activities[1]["event_type"] == "authorization"
 
     assert all("ip_address" not in item for item in activities)
     assert all("user_agent" not in item for item in activities)

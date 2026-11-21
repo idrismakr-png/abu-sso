@@ -209,6 +209,7 @@ def me(current_user=Depends(get_current_user)):
     response_model=list[AuthenticationActivityView],
 )
 def get_authentication_activity(
+    limit: int = Query(default=20, ge=1, le=100),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -247,11 +248,11 @@ def get_authentication_activity(
     if latest_idp_login is not None:
         activities.append(latest_idp_login)
 
-    return sorted(
-        activities,
+    activities.sort(
         key=lambda event: event.occurred_at,
         reverse=True,
     )
+    return activities[:limit]
 
 
 @router.get(
