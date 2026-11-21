@@ -212,7 +212,7 @@ def get_authentication_activity(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Return the latest central login and Student Portal SSO access."""
+    """Return the latest central login and one latest access per campus service."""
 
     latest_idp_login = (
         db.query(AuthenticationEvent)
@@ -226,26 +226,26 @@ def get_authentication_activity(
         .first()
     )
 
-    latest_student_portal_access = (
+    service_accesses = (
         db.query(AuthenticationEvent)
         .filter(
             AuthenticationEvent.user_id == current_user.id,
-            AuthenticationEvent.application_name == "ABU Student Portal",
+            AuthenticationEvent.application_name != "ABU-SSO Portal",
             AuthenticationEvent.event_type == "authorization",
             AuthenticationEvent.outcome == "success",
         )
         .order_by(AuthenticationEvent.occurred_at.desc())
-        .first()
+        .all()
     )
 
-    activities = [
-        event
-        for event in (
-            latest_idp_login,
-            latest_student_portal_access,
-        )
-        if event is not None
-    ]
+    latest_by_service = {}
+    for event in service_accesses:
+        if event.application_name not in latest_by_service:
+            latest_by_service[event.application_name] = event
+
+    activities = list(latest_by_service.values())
+    if latest_idp_login is not None:
+        activities.append(latest_idp_login)
 
     return sorted(
         activities,
