@@ -1,221 +1,213 @@
-# ABU-SSO - Unified Single Sign-On & Digital Campus Wallet
+# ABU-SSO — University Single Sign-On and Digital Campus Platform
 
 [![CI](https://github.com/idrismakr-png/abu-sso/actions/workflows/ci.yml/badge.svg)](https://github.com/idrismakr-png/abu-sso/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.12-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.142-009688)
-![Tests](https://img.shields.io/badge/tests-121%20passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen)
-![SAST](https://img.shields.io/badge/bandit-0%20findings-brightgreen)
-![Live](https://img.shields.io/badge/live-abu--sso.onrender.com-success)
+![Python](https://img.shields.io/badge/Python-3.12-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-blue)
+![OIDC](https://img.shields.io/badge/Identity-OpenID%20Connect-green)
 
-A unified authentication and campus services platform for **Ahmadu Bello University, Zaria**. One login grants access to **six independent campus services** plus a digital wallet with QR ID card.
+ABU-SSO is a central identity-provider and campus-services prototype for Ahmadu Bello University, Zaria. The project retains the existing account, wallet and QR digital-ID functionality while introducing an OpenID Connect (OIDC) federation design for six independently deployed campus applications.
 
-**Course:** COEN838 - Advanced Software Engineering  
+**Course:** COEN838 — Advanced Software Engineering  
 **Student:** Idris Muhammad Abubakar (P25EGCP9003)
 
----
+> **Implementation status:** The OIDC federation work is being developed on the `feature/oidc-sso-upgrade` branch and reviewed through [Pull Request #1](https://github.com/idrismakr-png/abu-sso/pull/1). The production Render services have not yet been upgraded to this branch. Do not interpret the presence of production URLs or configured environment variables as proof that production OIDC sign-in is active.
 
-## 🌐 Live Deployment
+## 1. Architecture
 
-### Main Identity Provider
-- **App:** [https://abu-sso.onrender.com](https://abu-sso.onrender.com)
-- **Login:** [https://abu-sso.onrender.com/login](https://abu-sso.onrender.com/login)
-- **Admin Panel:** [https://abu-sso.onrender.com/admin](https://abu-sso.onrender.com/admin)
-- **API Docs:** [https://abu-sso.onrender.com/docs](https://abu-sso.onrender.com/docs)
+ABU-SSO is the sole identity authority. Each campus application is an independent OIDC client with its own application UI, backend process and local browser session.
 
-### Six Distributed SSO Services
-| Service | URL |
-|---------|-----|
-| Student Portal | [abu-sso-portal.onrender.com](https://abu-sso-portal.onrender.com) |
-| LMS (Moodle) | [abu-sso-lms.onrender.com](https://abu-sso-lms.onrender.com) |
-| Library | [abu-sso-library.onrender.com](https://abu-sso-library.onrender.com) |
-| Hostel | [abu-sso-hostel.onrender.com](https://abu-sso-hostel.onrender.com) |
-| Wi-Fi | [abu-sso-wifi.onrender.com](https://abu-sso-wifi.onrender.com) |
-| Result Checker | [abu-sso-results.onrender.com](https://abu-sso-results.onrender.com) |
+| Application | Local development URL | Production service URL |
+|---|---|---|
+| Central ABU-SSO IdP | `http://127.0.0.1:8000` | [abu-sso.onrender.com](https://abu-sso.onrender.com) |
+| Student Portal | `http://127.0.0.1:4001` | [abu-sso-portal.onrender.com](https://abu-sso-portal.onrender.com) |
+| LMS | `http://127.0.0.1:4002` | [abu-sso-lms.onrender.com](https://abu-sso-lms.onrender.com) |
+| Library | `http://127.0.0.1:4003` | [abu-sso-library.onrender.com](https://abu-sso-library.onrender.com) |
+| Hostel | `http://127.0.0.1:4004` | [abu-sso-hostel.onrender.com](https://abu-sso-hostel.onrender.com) |
+| Campus Wi-Fi portal | `http://127.0.0.1:4005` | [abu-sso-wifi.onrender.com](https://abu-sso-wifi.onrender.com) |
+| Result Checker | `http://127.0.0.1:4006` | [abu-sso-results.onrender.com](https://abu-sso-results.onrender.com) |
 
-> **Note:** Free tier spins down after 15 minutes of inactivity. First request after idle takes 30–60 seconds. Subsequent requests are fast.
+### Browser SSO flow
 
-### Demo Credentials
+1. A user opens a campus application.
+2. The application redirects the browser to the central ABU-SSO authorization endpoint.
+3. If the user has no active central IdP browser session, ABU-SSO requests a password login. Otherwise, the existing IdP session is reused.
+4. ABU-SSO returns an authorization code to the registered callback URI.
+5. The client exchanges the code using PKCE S256 and validates the OIDC response.
+6. The client establishes its own local session. The central IdP session enables SSO to other registered browser applications without asking for the password again.
 
-| Role | Matric / Staff No. | Password |
-|------|-------------------|----------|
-| **Admin** | `ADMIN/001` | `admin123` |
-| Student | `P25EGCP9003` | `secret123` |
+The applications do not share their local session cookies or databases. They rely on the central identity provider rather than passing the legacy ABU access token in query strings.
 
----
+### OIDC protocol and endpoints
 
-## ✨ Features
+The implementation uses OAuth 2.0 Authorization Code Flow with OpenID Connect and PKCE (S256). ID tokens are signed using RS256. The issuer publishes its public signing key through JWKS.
 
-- 🔐 **Single Sign-On** — JWT-based authentication for all ABU services
-- 🎓 **Matric-Number Login** — students and staff use their official university number
-- 🚫 **Bootstrap-Only Registration** — first user on a fresh deployment becomes admin; all subsequent accounts are created by administrators (matches real ABU ICT workflow)
-- 🔑 **Secure Password Storage** — bcrypt hashing (cost ≥ 12)
-- 🛡️ **Role-Based Access Control** — `student` / `staff` / `admin` enforced by middleware
-- 📇 **Digital ID Card** — QR code encoding matric number + role
-- 💰 **Campus Wallet** — top-up, pay, transaction history
-- 🌐 **Web Dashboard** — Jinja2 + vanilla JS, launchpad for six services
-- 👑 **Admin Panel** — create users, change roles, activate/deactivate, top up wallets, view stats
-- 🚀 **Six Distributed SSO Services** — Portal, LMS, Library, Hostel, Wi-Fi, Result Checker
-- 📖 **Auto-Generated API Docs** — OpenAPI 3.0 at `/docs`
-- ✅ **121 Automated Tests** — 4 layers (unit, service, integration, E2E)
-- 🤖 **Continuous Integration** — GitHub Actions on every push
-- 🛡️ **SAST Clean** — 0 findings (Bandit)
-- ☁️ **Deployed** — Render (7 web services) + Neon (PostgreSQL)
+| Endpoint | Purpose |
+|---|---|
+| `/.well-known/openid-configuration` | OIDC discovery metadata |
+| `/authorize` | Authorization-code request |
+| `/token` | Authorization-code exchange |
+| `/userinfo` | User claims for a valid bearer access token |
+| `/jwks.json` | Public signing keys |
+| `/revoke` | Access-token revocation |
 
----
+The current userinfo implementation returns the subject and, when the requested scopes permit, name and email. It does **not** currently expose matric number or ABU role as OIDC claims. Refresh tokens are not supported in this implementation.
 
-## 🚀 Quick Start (Local)
+## 2. Application Registry and Security Activity
 
-```bash
-# Clone
+New OIDC clients are registered by an ABU-SSO administrator through the protected application registry. Client IDs are generated by the IdP. Redirect URIs are validated against the registered values; applications cannot self-register arbitrary callback URLs. Public clients use PKCE and do not receive a client secret. Confidential-client secrets are shown only at registration.
+
+The IdP records authentication events, including the application, outcome, timestamp, authentication method, and available request metadata. A successful authorization is distinguished as either a fresh password login or use of an existing SSO session. User-facing security notifications are associated with those authentication events rather than ordinary page navigation.
+
+- Users can view their own authentication activity and notifications.
+- Administrators can inspect authentication activity across applications and filter by application, outcome and user.
+- Users can mark their own notifications as read.
+- Audit records must not contain passwords, raw authorization codes, raw access tokens, ID tokens or private signing-key material.
+
+## 3. Existing Campus Features
+
+The OIDC work extends rather than replaces the existing central platform:
+
+- Matriculation/staff-number and password login.
+- Bootstrap-only public registration policy; subsequent account creation is administrator-controlled.
+- Bcrypt password hashing.
+- Student, staff and administrator roles for the existing ABU-SSO application.
+- QR-based digital ID card.
+- Campus wallet, top-up, payment and transaction history.
+- Administrator user management and dashboard statistics.
+
+The existing legacy JWT remains part of the central application's current API authentication. It is not the federation protocol used by the six OIDC clients.
+
+## 4. Repository Layout
+
+```text
+app/
+  models/          SQLAlchemy models, including OIDC and audit records
+  routers/         Authentication, admin, page and OIDC endpoints
+  schemas/         Request and response schemas
+  services/        OIDC grants/tokens, client registry, sessions and notifications
+  templates/       Central login, dashboard and admin UI
+  utils/            JWT, RBAC and OIDC signing-key helpers
+mock-services/
+  portal/
+  lms/
+  library/
+  hostel/
+  wifi/
+  results/
+tests/
+docs/
+keys/               Local signing keys; private material must not be committed
+```
+
+## 5. Local Development
+
+Requirements: Python 3.12, Git, and (for browser tests) Playwright/Chromium.
+
+```powershell
 git clone https://github.com/idrismakr-png/abu-sso.git
 cd abu-sso
+git switch feature/oidc-sso-upgrade
 
-# Create environment
 conda create -n abu-sso python=3.12 -y
 conda activate abu-sso
+python -m pip install -r requirements.txt
+```
 
-# Install
-pip install -r requirements.txt
+Configure the central IdP's local environment before starting it:
 
-# Run the main app
-uvicorn app.main:app --reload
+- `OIDC_ISSUER` — local issuer URL, normally `http://127.0.0.1:8000`.
+- `OIDC_PRIVATE_KEY_B64` and `OIDC_PUBLIC_KEY_B64`, or the configured local PEM key files under the ignored `keys/` directory.
+- `JWT_SECRET` — a strong development secret.
+- `DATABASE_URL` — local SQLite or a development database.
 
-Dashboard: http://127.0.0.1:8000/login
+Each mock service requires an OIDC client ID issued by the central application registry, its matching callback URI, the central `IDP_URL`, and a unique `SESSION_SECRET`. Do not invent client IDs or reuse a session secret across applications. The callback URIs for local development use the corresponding service port and `/auth/callback`.
 
-API docs: http://127.0.0.1:8000/docs
+Start the central IdP:
 
-Run the Six Mock Services (optional)
-In separate terminals:
+```powershell
+uvicorn app.main:app --reload --port 8000
+```
 
-cd mock-services/portal  && uvicorn main:app --reload --port 4001
-cd mock-services/lms     && uvicorn main:app --reload --port 4002
-cd mock-services/library && uvicorn main:app --reload --port 4003
-cd mock-services/hostel  && uvicorn main:app --reload --port 4004
-cd mock-services/wifi    && uvicorn main:app --reload --port 4005
-cd mock-services/results && uvicorn main:app --reload --port 4006
+Start each mock service in a separate terminal after its environment has been configured:
 
-The dashboard auto-detects whether you're on localhost or onrender.com and wires the service cards accordingly.
+```powershell
+# Student Portal
+cd mock-services/portal
+uvicorn main:app --reload --port 4001
 
-🧪 Run Tests
-# Fast tests (unit + service + integration)
-pytest -q
+# LMS
+cd mock-services/lms
+uvicorn main:app --reload --port 4002
 
-# System tests (Playwright, real browser)
-pytest tests/e2e -m e2e
+# Library
+cd mock-services/library
+uvicorn main:app --reload --port 4003
 
-# With coverage
+# Hostel
+cd mock-services/hostel
+uvicorn main:app --reload --port 4004
+
+# Campus Wi-Fi portal
+cd mock-services/wifi
+uvicorn main:app --reload --port 4005
+
+# Result Checker
+cd mock-services/results
+uvicorn main:app --reload --port 4006
+```
+
+For local HTTP-based OAuth tests only, Authlib's transport guard is disabled in the test process:
+
+```powershell
+$env:AUTHLIB_INSECURE_TRANSPORT = "1"
+pytest -v
+```
+
+This setting is for local test execution, not production. Production deployments must use HTTPS.
+
+## 6. Testing
+
+```powershell
+# Unit, integration and service tests
+pytest -v
+
+# Browser end-to-end tests
+pytest tests/e2e -m e2e -v
+
+# Coverage report
 pytest --cov=app --cov-report=term-missing
-Expected: 116 fast tests + 5 E2E tests = 121 passing, 96% line coverage.
+```
 
-📚 Documentation
-All engineering artefacts live in docs/:
+Latest local full-suite result recorded during this branch's CI remediation:
 
-Document	Description
-SRS	Software Requirements Specification (Module I)
-RTM	Requirements Traceability Matrix
-Design	Architecture, data model, patterns (Module III)
-Security	STRIDE threat model, SAST evidence (Module IV)
-Technical Report	Engineering narrative (Modules I–V)
-Test Results	Full test inventory, coverage report, SAST output
-User Manual	End-user + installation guide
-Risk & Maintenance	Risk register + maintenance plan (Module V)
-Presentation Guide	Slides + demo script + defence Q&A
-AI Use Declaration	Transparent disclosure (exam instruction F)
+- **208 passed**
+- **5 deselected**
+- **15 warnings**
 
-🏗️ Architecture
-The Identity Provider (modular monolith, layered):
-HTTP  →  Router  →  Service  →  Model  →  Database
-        (thin)    (business)   (ORM)     (SQLite/PG)
+This is a local test result, not a claim that the current GitHub Actions run or production deployment has passed. The E2E job runs separately in GitHub Actions.
 
-Plus six distributed services that trust the IdP:
-                ┌─────────────────────┐
-                │  ABU-SSO (IdP)      │  issues + verifies JWT
-                └─────────┬───────────┘
-                          │
-   ┌────────────────────────────────────────────────┐
-   │        │        │          │         |         │
-  Portal   LMS     Library    Hostel    Wi-Fi     Results
-  :4001   :4002     :4003     :4004     :4005    :4006
+## 7. Deployment and Operational Boundaries
 
-Each service verifies the token by calling the IdP's /auth/me — no shared session, no shared database.
+The Render blueprint describes seven web services (the central IdP and six campus applications); Neon PostgreSQL is used for the production database. Production rollout must follow successful review and merge of the OIDC branch, central registration of each application, configuration of the issued client IDs, and browser-based end-to-end verification.
 
-See docs/DESIGN.md for full details.
+Important boundaries:
 
-Backend: FastAPI (Python 3.12)
+- Keep RSA private signing keys, JWT secrets, client secrets and application session secrets out of Git.
+- Use HTTPS in production and exact registered redirect URIs.
+- Database `create_all` creates missing tables but is not a versioned migration strategy; a formal migration process is still recommended before production schema evolution.
+- Browser OIDC is not a complete Wi-Fi network-access solution. Campus Wi-Fi integration with RADIUS/802.1X requires a separate identity bridge and infrastructure validation.
+- The project is a prototype and should not be described as production-ready until deployment, persistence, security and operational controls have been verified.
 
-Database: SQLite (dev) → PostgreSQL (prod, Neon)
+## 8. Documentation
 
-Auth: JWT (HS256) + bcrypt
+Engineering documentation is maintained in `docs/`, including the requirements traceability matrix, software requirements, design, security analysis, test results, user guidance and project reports.
 
-Authorization: RBAC middleware (require_role)
+## Author
 
-Testing: pytest + httpx + Playwright
-
-CI: GitHub Actions
-
-SAST: Bandit
-
-Hosting: Render (7 services) + Neon (free tier)
-
-📊 Project Stats
-Metric	Value
-API Endpoints (IdP)	17
-Distributed SSO Services	6
-Functional Requirements	19/19 implemented
-Automated Tests   121 passing
-Line Coverage	96%
-SAST Findings	0
-CI Runtime	~50s (both jobs)
-UML Diagrams	3
-
-🔒 Roles & Access
-Role	Permissions
-student	Own profile, own wallet, own ID card, dashboard, 6 SSO services
-staff	Same as student
-admin	All of the above + admin panel: create users, change roles, activate/deactivate, top up any wallet, view system stats
-
-Account creation:
-
-First user on a fresh deployment → becomes admin (bootstrap).
-
-All subsequent accounts → created by an admin via the Admin Panel.
-
-Public registration is disabled after bootstrap. Students attempting to access /admin/* receive HTTP 403 Forbidden.
-
-🔐 Security Highlights
-Passwords: bcrypt with auto-generated salt
-
-Sessions: HS256 JWT, 15-minute expiry, ≥32-byte secret
-
-Input validation: Pydantic schemas on every request
-
-SQL injection: prevented by SQLAlchemy parameterisation
-
-RBAC: enforced via require_role() dependency
-
-Self-registration: disabled after bootstrap (bootstrap-only pattern)
-
-SAST: Bandit clean (0 findings)
-
-Secrets: .env gitignored; Render auto-generates in production
-
-See docs/SECURITY.md for the full STRIDE analysis.
-
-📄 License
-MIT — see project documentation for details.
-
-👤 Author
-Idris Muhammad Abubakar
-P25EGCP9003 — Department of Computer Engineering
+**Idris Muhammad Abubakar**  
+P25EGCP9003 — Department of Computer Engineering  
 Ahmadu Bello University, Zaria
-📧 idrismakr@gmail.com
 
-🙏 Acknowledgements
-Built with FastAPI, SQLAlchemy, Neon, and Render.
+## Acknowledgements
 
-
-
-
-
-<!-- Final submission finalized on November 05, 2026 -->
+Built with FastAPI, Authlib, SQLAlchemy, PostgreSQL/Neon, Render and the Python ecosystem.

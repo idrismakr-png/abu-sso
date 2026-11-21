@@ -1,4 +1,5 @@
-name: CI — Run Tests
+
+name: CI - Run Tests
 
 on:
   push:
@@ -13,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -26,6 +27,8 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run unit + service + integration tests
+        env:
+          AUTHLIB_INSECURE_TRANSPORT: "1"
         run: pytest -v
 
   e2e:
@@ -35,10 +38,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -53,4 +56,6 @@ jobs:
           playwright install --with-deps chromium
 
       - name: Run E2E system tests
+        env:
+          AUTHLIB_INSECURE_TRANSPORT: "1"
         run: pytest tests/e2e -m e2e -v
