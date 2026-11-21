@@ -14,7 +14,7 @@ IDP_URL = os.getenv("IDP_URL", "http://localhost:8000").rstrip("/")
 CLIENT_ID = os.getenv("OIDC_CLIENT_ID", "")
 REDIRECT_URI = os.getenv(
     "OIDC_REDIRECT_URI",
-    "http://127.0.0.1:4006/auth/callback",
+    "http://127.0.0.1:4005/auth/callback",
 )
 SESSION_SECRET = os.getenv("SESSION_SECRET", "")
 

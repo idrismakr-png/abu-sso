@@ -1,4 +1,6 @@
+
 import base64
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -18,26 +20,55 @@ def _base64url_uint(value: int) -> str:
     return base64.urlsafe_b64encode(encoded).rstrip(b"=").decode("ascii")
 
 
-@lru_cache(maxsize=1)
-def get_private_key():
-    """Load and cache the RSA private key used for token signing."""
-    key_path = Path(settings.oidc_private_key_path)
+def _load_key_bytes(environment_variable: str, configured_path: str) -> bytes:
+    """
+    Load PEM key material from a Base64 environment variable when available.
+    Otherwise, load it from the configured local file path.
+    """
+    encoded_key = os.getenv(environment_variable)
+
+    if encoded_key:
+        try:
+            return base64.b64decode(
+                encoded_key.strip(),
+                validate=True,
+            )
+        except (ValueError, base64.binascii.Error) as exc:
+            raise RuntimeError(
+                f"{environment_variable} must contain valid Base64-encoded PEM data."
+            ) from exc
+
+    key_path = Path(configured_path)
 
     if not key_path.is_absolute():
         key_path = Path(__file__).resolve().parents[2] / key_path
 
     if not key_path.is_file():
         raise RuntimeError(
-            f"OIDC private signing key was not found: {key_path}"
+            f"OIDC signing key was not found. Configure "
+            f"{environment_variable} or provide the file: {key_path}"
         )
 
+    return key_path.read_bytes()
+
+
+@lru_cache(maxsize=1)
+def get_private_key():
+    """Load and cache the RSA private key used for token signing."""
+    private_key_bytes = _load_key_bytes(
+        "OIDC_PRIVATE_KEY_B64",
+        settings.oidc_private_key_path,
+    )
+
     private_key = load_pem_private_key(
-        key_path.read_bytes(),
+        private_key_bytes,
         password=None,
     )
 
     if private_key.key_size < 2048:
-        raise RuntimeError("OIDC RSA signing key must be at least 2048 bits")
+        raise RuntimeError(
+            "OIDC RSA signing key must be at least 2048 bits"
+        )
 
     return private_key
 
@@ -45,18 +76,16 @@ def get_private_key():
 @lru_cache(maxsize=1)
 def get_public_jwk() -> dict:
     """Return the public RSA key in JSON Web Key format."""
-    key_path = Path(settings.oidc_public_key_path)
+    public_key_bytes = _load_key_bytes(
+        "OIDC_PUBLIC_KEY_B64",
+        settings.oidc_public_key_path,
+    )
 
-    if not key_path.is_absolute():
-        key_path = Path(__file__).resolve().parents[2] / key_path
+    public_key = load_pem_public_key(public_key_bytes)
 
-    if not key_path.is_file():
-        raise RuntimeError(
-            f"OIDC public signing key was not found: {key_path}"
-        )
-
-    public_key = load_pem_public_key(key_path.read_bytes())
-    private_public_numbers = get_private_key().public_key().public_numbers()
+    private_public_numbers = (
+        get_private_key().public_key().public_numbers()
+    )
     public_numbers = public_key.public_numbers()
 
     if private_public_numbers != public_numbers:
