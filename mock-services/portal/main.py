@@ -103,7 +103,6 @@ async def login(request: Request):
         request,
         redirect_uri,
         nonce=nonce,
-        prompt="none",
     )
 
 

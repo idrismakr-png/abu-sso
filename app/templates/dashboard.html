@@ -44,7 +44,7 @@
         <div>
             <h2 style="margin-bottom:4px;">Latest Login Activity</h2>
             <p style="color:#777; font-size:13px; margin-top:0;">
-                Showing your latest ABU-SSO login and Student Portal access.
+                Showing your latest ABU-SSO login and latest access to each campus service.
             </p>
         </div>
         <button id="refresh-activity" type="button"
@@ -258,7 +258,7 @@ async function loadAuthenticationActivity() {
                 "margin:5px 0 0; color:#666; font-size:13px;";
 
             const isServiceAccess =
-                activity.application_name === "ABU Student Portal" &&
+                activity.application_name !== "ABU-SSO Portal" &&
                 activity.event_type === "authorization";
 
             const activityLabel = isServiceAccess
@@ -289,6 +289,85 @@ document.getElementById("refresh-activity").addEventListener(
     loadAuthenticationActivity
 );
 
+function formatNotificationDate(value) {
+    return formatActivityDate(value);
+}
+
+async function loadSecurityNotifications() {
+    const box = document.getElementById("notification-list");
+    box.textContent = "Loading notifications...";
+
+    try {
+        const notifications = await api("/auth/notifications?limit=50");
+        if (!notifications) return;
+
+        if (notifications.length === 0) {
+            box.textContent = "No sign-in notifications yet.";
+            return;
+        }
+
+        box.replaceChildren();
+        notifications.forEach(notification => {
+            const row = document.createElement("div");
+            row.style.cssText =
+                "padding:12px 0; border-bottom:1px solid #eee;";
+
+            const heading = document.createElement("div");
+            heading.style.cssText =
+                "display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;";
+
+            const title = document.createElement("strong");
+            title.textContent = notification.title;
+
+            const state = document.createElement("span");
+            state.textContent = notification.read_at ? "Read" : "New";
+            state.style.color = notification.read_at ? "#777" : "#0b3d91";
+
+            const message = document.createElement("p");
+            message.style.cssText =
+                "margin:5px 0 0; color:#666; font-size:13px;";
+            message.textContent =
+                notification.message + " • " +
+                formatNotificationDate(notification.created_at);
+
+            heading.append(title, state);
+            row.append(heading, message);
+
+            if (!notification.read_at) {
+                const markRead = document.createElement("button");
+                markRead.type = "button";
+                markRead.textContent = "Mark as read";
+                markRead.style.cssText =
+                    "margin-top:8px; background:#0b3d91; padding:6px 10px; font-size:12px;";
+                markRead.addEventListener("click", async () => {
+                    markRead.disabled = true;
+                    try {
+                        await api(
+                            "/auth/notifications/" +
+                            encodeURIComponent(notification.id) + "/read",
+                            { method: "PATCH" }
+                        );
+                        await loadSecurityNotifications();
+                    } catch (error) {
+                        markRead.disabled = false;
+                    }
+                });
+                row.appendChild(markRead);
+            }
+
+            box.appendChild(row);
+        });
+    } catch (error) {
+        box.textContent = "Unable to load sign-in notifications. Please try again.";
+    }
+}
+
+document.getElementById("refresh-notifications").addEventListener(
+    "click",
+    loadSecurityNotifications
+);
+
+
 document.getElementById("logout-btn").addEventListener("click", async () => {
     try {
         await fetch("/auth/logout", {
@@ -307,7 +386,7 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
         await loadProfile();
         await loadWallet();
         await loadIdCard();
-        await loadAuthenticationActivity();
+        await loadAuthenticationActivity();\n        await loadSecurityNotifications();
     } catch (err) {
         const box = document.getElementById("error-box");
         box.textContent = err.message;

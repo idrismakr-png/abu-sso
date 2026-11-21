@@ -20,7 +20,7 @@ from app.services.idp_login_marker_service import (
 )
 from app.services.idp_session_service import get_active_idp_session
 from app.services.oidc_server import create_authorization_server
-from app.services.oidc_token_service import (
+from app.services.security_notification_service import (\n    create_authentication_notification,\n)\nfrom app.services.oidc_token_service import (
     get_userinfo_for_access_token,
     revoke_access_token,
 )
