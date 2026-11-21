@@ -3,6 +3,7 @@
 
 import os
 import secrets
+import time
 from pathlib import Path
 
 from authlib.integrations.starlette_client import OAuth
@@ -40,7 +41,7 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=SESSION_SECRET,
     session_cookie="abu_hostel_session",
-    max_age=3600,
+    max_age=15,
     same_site="lax",
     https_only=IDP_URL.startswith("https://"),
 )
@@ -84,6 +85,7 @@ async def login(request: Request):
         request,
         REDIRECT_URI,
         nonce=nonce,
+        prompt="none",
     )
 
 
@@ -108,6 +110,7 @@ async def auth_callback(request: Request):
             "role": "student",
             "matric_no": "",
         }
+        request.session["idp_verified_at"] = time.time()
 
         return RedirectResponse("/", status_code=303)
 

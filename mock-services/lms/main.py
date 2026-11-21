@@ -3,6 +3,7 @@
 
 import os
 import secrets
+import time
 from pathlib import Path
 
 from authlib.integrations.starlette_client import OAuth
@@ -44,7 +45,7 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=SESSION_SECRET,
     session_cookie="abu_lms_session",
-    max_age=3600,
+    max_age=15,
     same_site="lax",
     https_only=IDP_URL.startswith("https://"),
 )
@@ -68,8 +69,14 @@ oauth.register(
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     user = request.session.get("user")
+    verified_at = request.session.get("idp_verified_at")
 
-    if not user:
+    if (
+        not user
+        or not isinstance(verified_at, (int, float))
+        or time.time() - verified_at > 15
+    ):
+        request.session.clear()
         return RedirectResponse(
             url="/login",
             status_code=303,
@@ -94,6 +101,7 @@ async def login(request: Request):
         request,
         REDIRECT_URI,
         nonce=nonce,
+        prompt="none",
     )
 
 
@@ -123,6 +131,7 @@ async def auth_callback(request: Request):
             "role": "Not supplied by OIDC userinfo",
             "matric_no": "Not supplied by OIDC userinfo",
         }
+        request.session["idp_verified_at"] = time.time()
 
         return RedirectResponse(
             url="/",
