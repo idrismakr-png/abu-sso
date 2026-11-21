@@ -127,7 +127,7 @@ MOCK_SERVICES = [
     "results",
 ]
 
-OIDC_SERVICES = ["portal", "lms"]
+OIDC_SERVICES = ["portal", "lms", "library"]
 
 
 def _load_mock_app(service):
