@@ -42,27 +42,6 @@
 <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
         <div>
-            <h2 style="margin-bottom:4px;">Security Notifications</h2>
-            <p style="color:#777; font-size:13px; margin-top:0;">
-                Alerts when your ABU account authenticates with another service.
-            </p>
-        </div>
-        <button id="refresh-notifications" type="button"
-                style="margin-top:0; background:#0b3d91;">
-            Refresh
-        </button>
-    </div>
-    <div id="notification-count" style="font-size:13px; color:#555; margin-bottom:10px;">
-        Loading notifications...
-    </div>
-    <div id="notification-list" aria-live="polite">
-        <p style="color:#777; font-size:13px;">Loading notifications...</p>
-    </div>
-</div>
-
-<div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-        <div>
             <h2 style="margin-bottom:4px;">Security & Login Activity</h2>
             <p style="color:#777; font-size:13px; margin-top:0;">
                 Recent sign-ins and access to connected ABU services.
@@ -240,99 +219,6 @@ function formatActivityDate(value) {
     return date.toLocaleString();
 }
 
-async function loadSecurityNotifications() {
-    const box = document.getElementById("notification-list");
-    const count = document.getElementById("notification-count");
-
-    box.textContent = "Loading notifications...";
-
-    try {
-        const notifications = await api("/auth/notifications?limit=50");
-        if (!notifications) return;
-
-        const unreadCount = notifications.filter(
-            notification => !notification.read_at
-        ).length;
-
-        count.textContent = unreadCount +
-            " unread notification(s) • " +
-            notifications.length + " recent notification(s)";
-
-        if (notifications.length === 0) {
-            box.textContent = "You have no security notifications.";
-            return;
-        }
-
-        box.replaceChildren();
-
-        notifications.forEach(notification => {
-            const row = document.createElement("div");
-            row.style.cssText =
-                "padding:12px 0; border-bottom:1px solid #eee;";
-
-            const heading = document.createElement("div");
-            heading.style.cssText =
-                "display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;";
-
-            const title = document.createElement("strong");
-            title.textContent = notification.title;
-
-            const status = document.createElement("span");
-            status.textContent = notification.read_at ? "Read" : "New";
-            status.style.color = notification.read_at ? "#777" : "#0b3d91";
-            status.style.fontWeight = "600";
-
-            const message = document.createElement("p");
-            message.style.cssText =
-                "margin:5px 0; color:#555; font-size:13px;";
-            message.textContent = notification.message;
-
-            const date = document.createElement("p");
-            date.style.cssText =
-                "margin:4px 0; color:#888; font-size:12px;";
-            date.textContent = formatActivityDate(notification.created_at);
-
-            heading.append(title, status);
-            row.append(heading, message, date);
-
-            if (!notification.read_at) {
-                const button = document.createElement("button");
-                button.type = "button";
-                button.textContent = "Mark as read";
-                button.style.cssText =
-                    "margin-top:6px; background:#0b3d91;";
-
-                button.addEventListener("click", async () => {
-                    button.disabled = true;
-
-                    try {
-                        await api(
-                            "/auth/notifications/" +
-                            encodeURIComponent(notification.id) +
-                            "/read",
-                            { method: "PATCH" }
-                        );
-
-                        await loadSecurityNotifications();
-                    } catch (error) {
-                        button.disabled = false;
-                        count.textContent =
-                            "Unable to update notification. Please try again.";
-                    }
-                });
-
-                row.appendChild(button);
-            }
-
-            box.appendChild(row);
-        });
-    } catch (error) {
-        box.textContent =
-            "Unable to load security notifications. Please try again.";
-        count.textContent = "Notification service unavailable.";
-    }
-}
-
 async function loadAuthenticationActivity() {
     const box = document.getElementById("activity-list");
     box.textContent = "Loading activity...";
@@ -393,11 +279,6 @@ document.getElementById("refresh-activity").addEventListener(
     loadAuthenticationActivity
 );
 
-document.getElementById("refresh-notifications").addEventListener(
-    "click",
-    loadSecurityNotifications
-);
-
 document.getElementById("logout-btn").addEventListener("click", async () => {
     try {
         await fetch("/auth/logout", {
@@ -416,7 +297,6 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
         await loadProfile();
         await loadWallet();
         await loadIdCard();
-        await loadSecurityNotifications();
         await loadAuthenticationActivity();
     } catch (err) {
         const box = document.getElementById("error-box");
