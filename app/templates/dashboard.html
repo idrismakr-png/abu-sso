@@ -44,7 +44,7 @@
         <div>
             <h2 style="margin-bottom:4px;">Latest Login Activity</h2>
             <p style="color:#777; font-size:13px; margin-top:0;">
-                Showing only your most recent ABU-SSO sign-in.
+                Showing your latest ABU-SSO login and Student Portal access.
             </p>
         </div>
         <button id="refresh-activity" type="button"
@@ -257,12 +257,22 @@ async function loadAuthenticationActivity() {
             details.style.cssText =
                 "margin:5px 0 0; color:#666; font-size:13px;";
 
-            const method = activity.authentication_method
-                ? activity.authentication_method.replaceAll("_", " ")
-                : "Authentication method unavailable";
+            const isServiceAccess =
+                activity.application_name === "ABU Student Portal" &&
+                activity.event_type === "authorization";
+
+            const activityLabel = isServiceAccess
+                ? "access"
+                : activity.event_type;
+
+            const method = isServiceAccess
+                ? "single sign-on"
+                : (activity.authentication_method
+                    ? activity.authentication_method.replaceAll("_", " ")
+                    : "Authentication method unavailable");
 
             details.textContent =
-                activity.event_type + " • " + method +
+                activityLabel + " • " + method +
                 " • " + formatActivityDate(activity.occurred_at);
 
             heading.append(appName, status);

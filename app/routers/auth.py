@@ -212,17 +212,45 @@ def get_authentication_activity(
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Return only the most recent login event for the current user."""
+    """Return the latest central login and Student Portal SSO access."""
 
-    return (
+    latest_idp_login = (
         db.query(AuthenticationEvent)
         .filter(
             AuthenticationEvent.user_id == current_user.id,
+            AuthenticationEvent.application_name == "ABU-SSO Portal",
             AuthenticationEvent.event_type == "login",
+            AuthenticationEvent.outcome == "success",
         )
         .order_by(AuthenticationEvent.occurred_at.desc())
-        .limit(1)
-        .all()
+        .first()
+    )
+
+    latest_student_portal_access = (
+        db.query(AuthenticationEvent)
+        .filter(
+            AuthenticationEvent.user_id == current_user.id,
+            AuthenticationEvent.application_name == "ABU Student Portal",
+            AuthenticationEvent.event_type == "authorization",
+            AuthenticationEvent.outcome == "success",
+        )
+        .order_by(AuthenticationEvent.occurred_at.desc())
+        .first()
+    )
+
+    activities = [
+        event
+        for event in (
+            latest_idp_login,
+            latest_student_portal_access,
+        )
+        if event is not None
+    ]
+
+    return sorted(
+        activities,
+        key=lambda event: event.occurred_at,
+        reverse=True,
     )
 
 
