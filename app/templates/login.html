@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% block title %}Login — ABU-SSO{% endblock %}
@@ -51,15 +52,41 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
             let msg = data.detail;
+
             if (Array.isArray(msg)) {
-                msg = msg.map(e => `${(e.loc || []).join(".") || "field"}: ${e.msg}`).join("; ");
+                msg = msg.map(e =>
+                    `${(e.loc || []).join(".") || "field"}: ${e.msg}`
+                ).join("; ");
             }
+
             throw new Error(msg || "Login failed");
         }
 
         const data = await res.json();
         localStorage.setItem("abu_token", data.access_token);
+
+        // Return to the original OIDC authorization request, if valid.
+        const params = new URLSearchParams(window.location.search);
+        const next = params.get("next");
+
+        if (next) {
+            const destination = new URL(next, window.location.origin);
+
+            if (
+                destination.origin === window.location.origin &&
+                destination.pathname === "/authorize" &&
+                next.startsWith("/") &&
+                !next.startsWith("//") &&
+                !next.includes("\\")
+            ) {
+                window.location.href =
+                    destination.pathname + destination.search;
+                return;
+            }
+        }
+
         window.location.href = "/dashboard";
+
     } catch (err) {
         errBox.textContent = err.message;
         errBox.classList.remove("hidden");

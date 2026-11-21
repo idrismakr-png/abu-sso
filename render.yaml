@@ -1,5 +1,6 @@
+
 services:
-  # ============== Main App ==============
+  # ============== Central Identity Provider ==============
   - type: web
     name: abu-sso
     runtime: python
@@ -7,14 +8,22 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: DEBUG
+        value: "false"
       - key: JWT_SECRET
         generateValue: true
       - key: DATABASE_URL
         sync: false
+      - key: OIDC_ISSUER
+        value: https://abu-sso.onrender.com
+      - key: OIDC_PRIVATE_KEY_B64
+        sync: false
+      - key: OIDC_PUBLIC_KEY_B64
+        sync: false
       - key: PYTHON_VERSION
         value: "3.12.0"
 
-  # ============== Mock Services ==============
+  # ============== Student Portal ==============
   - type: web
     name: abu-sso-portal
     runtime: python
@@ -25,9 +34,16 @@ services:
     envVars:
       - key: IDP_URL
         value: https://abu-sso.onrender.com
+      - key: OIDC_CLIENT_ID
+        sync: false
+      - key: OIDC_REDIRECT_URI
+        value: https://abu-sso-portal.onrender.com/auth/callback
+      - key: SESSION_SECRET
+        sync: false
       - key: PYTHON_VERSION
         value: "3.12.0"
 
+  # ============== LMS ==============
   - type: web
     name: abu-sso-lms
     runtime: python
@@ -38,9 +54,16 @@ services:
     envVars:
       - key: IDP_URL
         value: https://abu-sso.onrender.com
+      - key: OIDC_CLIENT_ID
+        sync: false
+      - key: OIDC_REDIRECT_URI
+        value: https://abu-sso-lms.onrender.com/auth/callback
+      - key: SESSION_SECRET
+        sync: false
       - key: PYTHON_VERSION
         value: "3.12.0"
 
+  # ============== University Library ==============
   - type: web
     name: abu-sso-library
     runtime: python
@@ -51,9 +74,16 @@ services:
     envVars:
       - key: IDP_URL
         value: https://abu-sso.onrender.com
+      - key: OIDC_CLIENT_ID
+        sync: false
+      - key: OIDC_REDIRECT_URI
+        value: https://abu-sso-library.onrender.com/auth/callback
+      - key: SESSION_SECRET
+        sync: false
       - key: PYTHON_VERSION
         value: "3.12.0"
 
+  # ============== Hostel Management ==============
   - type: web
     name: abu-sso-hostel
     runtime: python
@@ -64,9 +94,16 @@ services:
     envVars:
       - key: IDP_URL
         value: https://abu-sso.onrender.com
+      - key: OIDC_CLIENT_ID
+        sync: false
+      - key: OIDC_REDIRECT_URI
+        value: https://abu-sso-hostel.onrender.com/auth/callback
+      - key: SESSION_SECRET
+        sync: false
       - key: PYTHON_VERSION
         value: "3.12.0"
 
+  # ============== Campus Wi-Fi ==============
   - type: web
     name: abu-sso-wifi
     runtime: python
@@ -77,9 +114,16 @@ services:
     envVars:
       - key: IDP_URL
         value: https://abu-sso.onrender.com
+      - key: OIDC_CLIENT_ID
+        sync: false
+      - key: OIDC_REDIRECT_URI
+        value: https://abu-sso-wifi.onrender.com/auth/callback
+      - key: SESSION_SECRET
+        sync: false
       - key: PYTHON_VERSION
         value: "3.12.0"
 
+  # ============== Results ==============
   - type: web
     name: abu-sso-results
     runtime: python
@@ -90,5 +134,11 @@ services:
     envVars:
       - key: IDP_URL
         value: https://abu-sso.onrender.com
+      - key: OIDC_CLIENT_ID
+        sync: false
+      - key: OIDC_REDIRECT_URI
+        value: https://abu-sso-results.onrender.com/auth/callback
+      - key: SESSION_SECRET
+        sync: false
       - key: PYTHON_VERSION
         value: "3.12.0"
