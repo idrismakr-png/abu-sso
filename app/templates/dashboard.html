@@ -42,9 +42,9 @@
 <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
         <div>
-            <h2 style="margin-bottom:4px;">Security & Login Activity</h2>
+            <h2 style="margin-bottom:4px;">Latest Login Activity</h2>
             <p style="color:#777; font-size:13px; margin-top:0;">
-                Login events for your ABU account.
+                Showing only your most recent ABU-SSO sign-in.
             </p>
         </div>
         <button id="refresh-activity" type="button"
@@ -224,7 +224,7 @@ async function loadAuthenticationActivity() {
     box.textContent = "Loading activity...";
 
     try {
-        const activities = await api("/auth/activity?limit=50");
+        const activities = await api("/auth/activity");
         if (!activities) return;
 
         if (activities.length === 0) {

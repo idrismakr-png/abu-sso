@@ -209,11 +209,10 @@ def me(current_user=Depends(get_current_user)):
     response_model=list[AuthenticationActivityView],
 )
 def get_authentication_activity(
-    limit: int = Query(default=50, ge=1, le=100),
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Return recent authentication events belonging to the current user."""
+    """Return only the most recent login event for the current user."""
 
     return (
         db.query(AuthenticationEvent)
@@ -222,7 +221,7 @@ def get_authentication_activity(
             AuthenticationEvent.event_type == "login",
         )
         .order_by(AuthenticationEvent.occurred_at.desc())
-        .limit(limit)
+        .limit(1)
         .all()
     )
 
