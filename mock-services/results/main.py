@@ -62,7 +62,14 @@ oauth.register(
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     user = request.session.get("user")
-    if not user:
+    verified_at = request.session.get("idp_verified_at")
+
+    if (
+        not user
+        or not isinstance(verified_at, (int, float))
+        or time.time() - verified_at > 15
+    ):
+        request.session.clear()
         return RedirectResponse("/login", status_code=303)
 
     return templates.TemplateResponse(

@@ -233,7 +233,10 @@ async def authorize(
             urlsplit(location).query
         )
 
-        if "code" in response_parameters:
+        if (
+            "code" in response_parameters
+            and "none" not in prompt_values
+        ):
             client = getattr(oauth_request, "client", None)
 
             if client is not None:
