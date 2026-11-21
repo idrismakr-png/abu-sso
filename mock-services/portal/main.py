@@ -72,13 +72,10 @@ oauth.register(
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     user = request.session.get("user")
-    verified_at = request.session.get("idp_verified_at")
 
-    if (
-        not user
-        or not isinstance(verified_at, (int, float))
-        or time.time() - verified_at > 15
-    ):
+    # Permit only the immediate landing after the OIDC callback.
+    # Every later visit must re-check the central identity provider.
+    if not user or not request.session.pop("allow_home_once", False):
         request.session.clear()
         return RedirectResponse(
             url="/login",
@@ -137,6 +134,7 @@ async def auth_callback(request: Request):
             "matric_no": "Not supplied by OIDC userinfo",
         }
         request.session["idp_verified_at"] = time.time()
+        request.session["allow_home_once"] = True
 
         return RedirectResponse(
             url="/",
