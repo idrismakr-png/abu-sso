@@ -362,10 +362,15 @@ async function loadSecurityNotifications() {
     }
 }
 
-document.getElementById("refresh-notifications").addEventListener(
-    "click",
-    loadSecurityNotifications
-);
+const refreshNotificationsButton =
+    document.getElementById("refresh-notifications");
+
+if (refreshNotificationsButton) {
+    refreshNotificationsButton.addEventListener(
+        "click",
+        loadSecurityNotifications
+    );
+}
 
 
 document.getElementById("logout-btn").addEventListener("click", async () => {
