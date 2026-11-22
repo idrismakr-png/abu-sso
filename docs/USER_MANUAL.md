@@ -1,7 +1,7 @@
 # ABU-SSO User Manual & Installation Guide
 ## Unified Single Sign-On & Digital Campus Wallet
 
-**Version:** 1.1  
+**Version:** 1.2  
 **Target users:** Students, Staff, and System Administrators of Ahmadu Bello University  
 **Course:** COEN838 - Advanced Software Engineering  
 
@@ -54,8 +54,9 @@ The dashboard shows everything at a glance:
 | **Welcome bar** | Your name, role, and matric number |
 | **Campus Wallet** | Current balance and recent transactions |
 | **Digital ID Card** | Your name, matric, role, email, and QR code |
-| **Campus Services** | Six clickable cards - Portal, LMS, Result Checker, Library, Hostel, Wi-Fi |
-| **Log out** | Ends your session |
+| **Login & Security Activity** | Your latest central login, latest access to each campus service, and security notifications in one chronological panel. You can refresh the feed and mark your own notifications as read. |
+| **Campus Services** | Six links - Portal, LMS, Result Checker, Library, Hostel, Wi-Fi |
+| **Log out** | Revokes the central IdP browser session and clears the dashboard API token |
 | **Admin Panel** (admins only) | Blue button to open the admin page |
 
 ### A.6 Using Your Campus Wallet
@@ -82,7 +83,7 @@ The dashboard shows everything at a glance:
 
 ### A.8 Using the Six Campus Services (Single Sign-On)
 
-The **Campus Services** card on your dashboard shows six buttons. Clicking any of them opens a **separate campus application** in a new tab - **already signed in** with your ABU-SSO account.
+The **Campus Services** card on your dashboard shows six links. Each opens a separate campus application in a new tab. The service redirects through the central ABU-SSO identity provider. If your central IdP session is active, the service signs you in through SSO without asking for your password again. If there is no active central session, you must sign in at the central login page.
 
 | Service | What you can do |
 |---------|-----------------|
@@ -93,16 +94,19 @@ The **Campus Services** card on your dashboard shows six buttons. Clicking any o
 | **Hostel** | Room booking, gate access |
 | **Campus Wi-Fi** | Network access, device registration |
 
-You do **not** need to log in again — each service independently verifies your ABU-SSO token.
+The services do not share a password or browser session cookie. Each service uses OIDC Authorization Code Flow with PKCE and creates its own local session only after the central IdP successfully authorizes the user. Protected service access must revalidate the central session; a stale local service session must not be treated as proof of a current central login.
 
 > **First-click delay:** On the free-tier deployment, the first click after 15 minutes of inactivity may take 30–60 seconds while the service wakes up. Subsequent clicks are instant.
 
-### A.9 Logging Out
+### A.9 Logging Out and Switching Accounts
 
-- Click the red **Log out** button on the dashboard.
-- Your token is deleted from the browser.
-- You are redirected to the login page.
-- If you try to open `/dashboard` without logging in, you will be sent back to `/login`.
+- Click the red **Log out** button on the central ABU-SSO dashboard.
+- The central IdP session is revoked and the browser's central session cookie is cleared; the dashboard also removes its local API token.
+- You are redirected to the central login page.
+- On a subsequent visit to a protected campus service, the service must redirect to the central IdP. With no active central session, the login page should be shown.
+- To use a different account, complete the central login with that account's own matric/staff number and password. Do not rely on closing a service tab alone; that does not necessarily end the central IdP session.
+
+**Important:** A successful central logout should prevent a later service authorization from silently reusing the revoked central session. Each service's own local session is separate and must not bypass central revalidation.
 
 ### A.10 Troubleshooting
 
@@ -172,7 +176,7 @@ The dashboard auto-detects localhost vs. production and wires the cards accordin
 B.8 Run the Tests
 pytest -q                      # 79 fast tests
 pytest tests/e2e -m e2e        # 5 E2E tests
-Expected: 121 passed.
+Run the test commands and use the actual current test output as the result; historical test counts may not match the current suite.
 
 B.9 Optional — Coverage Report
 
