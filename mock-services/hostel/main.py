@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from authlib.integrations.starlette_client import OAuth
+from authlib.integrations.base_client.errors import OAuthError
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -51,10 +52,25 @@ app.add_middleware(
 )
 
 oauth = OAuth()
+
+# Render's edge rate-limits repeated discovery requests across campus apps.
+# Load the small, stable IdP metadata document from a shared in-process cache.
+from functools import lru_cache
+import httpx
+
+@lru_cache(maxsize=1)
+def get_idp_metadata():
+    response = httpx.get(
+        f"{IDP_URL}/.well-known/openid-configuration",
+        timeout=10.0,
+    )
+    response.raise_for_status()
+    return response.json()
+
 oauth.register(
     name="abu_sso",
     client_id=CLIENT_ID,
-    server_metadata_url=f"{IDP_URL}/.well-known/openid-configuration",
+    server_metadata=get_idp_metadata(),
     client_kwargs={
         "scope": "openid profile email",
         "code_challenge_method": "S256",
