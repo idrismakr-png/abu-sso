@@ -77,14 +77,22 @@ def test_student_can_view_only_own_notifications(client, db):
         assert response.status_code == 200
         notifications = response.json()
 
-        assert len(notifications) == 1
-        assert notifications[0]["id"] == own_notification.id
-        assert notifications[0]["title"] == (
+        # A successful central login also creates its own notification.
+        # The service notification must be present, and another user's
+        # notification must never be exposed.
+        notification_ids = {item["id"] for item in notifications}
+        assert own_notification.id in notification_ids
+        assert other_notification.id not in notification_ids
+        service_notification = next(
+            item for item in notifications
+            if item["id"] == own_notification.id
+        )
+        assert service_notification["title"] == (
             "New sign-in to Learning Management System"
         )
-        assert notifications[0]["read_at"] is None
-        assert "ip_address" not in notifications[0]
-        assert "user_agent" not in notifications[0]
+        assert service_notification["read_at"] is None
+        assert "ip_address" not in service_notification
+        assert "user_agent" not in service_notification
 
     finally:
         db.query(SecurityNotification).filter(

@@ -55,24 +55,25 @@ app.add_middleware(
 
 oauth = OAuth()
 
-# Render's edge rate-limits repeated discovery requests across campus apps.
-# Load the small, stable IdP metadata document from a shared in-process cache.
-from functools import lru_cache
-import httpx
-
-@lru_cache(maxsize=1)
-def get_idp_metadata():
-    response = httpx.get(
-        f"{IDP_URL}/.well-known/openid-configuration",
-        timeout=10.0,
-    )
-    response.raise_for_status()
-    return response.json()
-
+# Keep the IdP endpoints local and deterministic. Avoid a network
+# discovery request during module import or on every login attempt.
 oauth.register(
     name="abu_sso",
     client_id=CLIENT_ID,
-    server_metadata=get_idp_metadata(),
+    server_metadata={
+        "issuer": IDP_URL,
+        "authorization_endpoint": f"{IDP_URL}/authorize",
+        "token_endpoint": f"{IDP_URL}/token",
+        "userinfo_endpoint": f"{IDP_URL}/userinfo",
+        "jwks_uri": f"{IDP_URL}/jwks.json",
+        "revocation_endpoint": f"{IDP_URL}/revoke",
+        "response_types_supported": ["code"],
+        "grant_types_supported": ["authorization_code"],
+        "subject_types_supported": ["public"],
+        "id_token_signing_alg_values_supported": ["RS256"],
+        "token_endpoint_auth_methods_supported": ["none"],
+        "code_challenge_methods_supported": ["S256"],
+    },
     client_kwargs={
         "scope": "openid profile email",
         "code_challenge_method": "S256",
