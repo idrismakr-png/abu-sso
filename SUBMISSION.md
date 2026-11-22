@@ -17,12 +17,7 @@
 | **API Documentation** | https://abu-sso.onrender.com/docs |
 | **Health Check** | https://abu-sso.onrender.com/health |
 
-**Demo credentials:**
-
-| Role | Matric | Password |
-|------|--------|----------|
-| Admin | `ADMIN/001` | `admin123` |
-| Student | `P25EGCP9003` | `secret123` |
+**Demo credentials:** Use only credentials issued for the current demonstration environment. Do not publish passwords in source control or submission documents.
 
 > **Note:** Free-tier cloud services sleep after 15 minutes of inactivity. First request after idle takes 30–60 seconds. Subsequent requests are fast.
 
@@ -39,7 +34,7 @@
 | Wi-Fi | https://abu-sso-wifi.onrender.com |
 | Result Checker | https://abu-sso-results.onrender.com |
 
-Each service independently verifies the ABU-SSO JWT — demonstrating true Single Sign-On.
+Each service is an independent OIDC client. It redirects to the central ABU-SSO identity provider, completes Authorization Code Flow with PKCE, validates the OIDC response and establishes its own local service session. The central IdP browser session enables SSO across services.
 
 ---
 
@@ -73,4 +68,4 @@ conda activate abu-sso
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 
-<!-- Final submission finalized on November 05, 2026 -->
+<!-- Documentation reviewed against the deployed implementation on November 22, 2026. -->
