@@ -115,7 +115,7 @@ STRIDE is applied to each major component.
   - `sub` - user id (UUID)
   - `iat` - issued at (Unix epoch)
   - `exp` - expiry (iat + 900 seconds = 15 minutes)
-- **Transport:** `Authorization: Bearer <token>` header (for API), `?token=` query param (for mock services in the demo).
+- **Transport:** `Authorization: Bearer <token>` header for the central application's API. The six campus clients use OIDC authorization-code callbacks; they do not use legacy query-string token transport.
 - **Storage on client:** `localStorage["abu_token"]`.
 
 **Why JWT and not server-side sessions?**
