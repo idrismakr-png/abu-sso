@@ -141,3 +141,22 @@ For a change to security notifications or authentication auditing, review the ev
 ---
 
 *End of Requirements Traceability Matrix.*
+
+
+## 6. Session Lifecycle, User Activity and Account Switching — Implementation Update
+
+| Requirement | Design / implementation trace | Verification status |
+|---|---|---|
+| Central IdP browser session is database-backed, expires and can be revoked | idp_session_service; auth login/logout routes; OIDC authorize route | Implemented in code; expiry/revocation edge cases require acceptance tests |
+| Each campus service uses OIDC Authorization Code Flow with PKCE and a separate local session | Six mock-services client implementations; registered OIDC clients | Deployed to Render; all six deployments were confirmed live on the OIDC endpoint-configuration release |
+| Missing central session redirects to central login | OIDC authorize route and each service login/callback flow | Student Portal was manually observed redirecting through central login after the central session was no longer active |
+| Central logout prevents subsequent service access from silently reusing the revoked IdP session | auth logout route, IdP session revocation, service revalidation | Student Portal redirect behaviour was manually observed; full six-service logout matrix remains to be completed |
+| User can switch from account A to account B after central logout | Central login and OIDC prompt handling | Not yet fully verified with two distinct user accounts |
+| User sees own activity and security notifications only | GET /auth/activity and GET /auth/notifications user-scoped routes | Implemented in API and dashboard; authorization test evidence should be retained with current CI output |
+| User can mark own notification as read | PATCH /auth/notifications/{notification_id}/read | Implemented in API and combined dashboard panel |
+| Administrator can inspect system-wide authentication activity | Admin authentication activity route and admin UI | Implemented; verify role restriction in current test run |
+
+### 6.1 Dashboard consolidation
+
+The two previous user-facing panels, **Latest Login Activity** and **Security Notifications**, have been consolidated into one chronological **Login & Security Activity** panel. The client loads both user-scoped endpoints, merges entries by timestamp for presentation, preserves notification read/unread state and retains the mark-as-read action. The change does not delete underlying event or notification records.
+
