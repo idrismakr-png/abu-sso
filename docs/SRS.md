@@ -131,7 +131,7 @@ abu-sso/
 ### 2.5 Design and Implementation Constraints
 
 - **Technology stack locked to Python 3.12 + FastAPI.**
-- **JWT-based authentication** - stateless, no server-side sessions.
+- **Authentication architecture:** OIDC browser federation with a database-backed central IdP session for the six campus clients; a separate short-lived bearer JWT is used by the central dashboard API.
 - **Password hashing with bcrypt** - plain-text storage prohibited.
 - **Matric-number login** - no email-based authentication.
 - **Bootstrap-only public registration** - after the first admin account exists, `/auth/register` returns HTTP 403.
@@ -145,7 +145,7 @@ abu-sso/
 - Staff are assigned a staff number by HR.
 - Administrators are trusted ICT Directorate staff.
 - Network connectivity exists between the client browser and the server.
-- Third-party services trust the JWT signature using a shared HS256 secret during the prototype; production would use RS256 public-key verification.
+- The six campus applications are OIDC clients. They use Authorization Code Flow with PKCE and validate the OIDC response and RS256-signed ID token using the IdP's published JWKS; they do not share an HS256 signing secret.
 
 ### 2.7 Apportioning of Requirements
 
@@ -182,7 +182,7 @@ Requirements prioritised using the MoSCoW method:
 | **FR-14** | The system shall expose a health-check endpoint (`/health`) for monitoring. | Must | System, DevOps |
 | **FR-15** | The system shall render a web-based login page and a dashboard for authenticated users. | Must | Student, Staff, Admin |
 | **FR-16** | The system shall allow an administrator to create new user accounts via `POST /admin/users` with a specific role. | Must | Admin |
-| **FR-17** | The system shall provide six independently-deployable SSO services — Student Portal, LMS, Library, Hostel, Wi-Fi, Result Checker — each of which independently verifies the ABU-SSO JWT via the IdP's `/auth/me` endpoint. | Must | System |
+| **FR-17** | The system shall provide six independently-deployable OIDC client applications — Student Portal, LMS, Library, Hostel, Wi-Fi, Result Checker — each of which obtains authorization from the central IdP using Authorization Code Flow with PKCE and establishes its own local session. | Must | System |
 | **FR-18** | The system shall allow an administrator to change a user's role, activate/deactivate an account, and top up any user's wallet. | Must | Admin |
 | **FR-19** | The system shall display system-wide statistics (total users, active users, wallets, total balance, transactions) to administrators. | Should | Admin |
 
