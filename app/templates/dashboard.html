@@ -58,6 +58,24 @@
 </div>
 
 <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <div>
+            <h2 style="margin-bottom:4px;">Security Notifications</h2>
+            <p style="color:#777; font-size:13px; margin-top:0;">
+                Recent sign-in and account security notifications.
+            </p>
+        </div>
+        <button id="refresh-notifications" type="button"
+                style="margin-top:0; background:#0b3d91;">
+            Refresh
+        </button>
+    </div>
+    <div id="notification-list" aria-live="polite">
+        <p style="color:#777; font-size:13px;">Loading notifications...</p>
+    </div>
+</div>
+
+<div class="card">
     <h2>Campus Services</h2>
     <p style="font-size:13px; color:#777; margin-bottom:14px;">
         One login, six services. Click any card to open — no second password.
