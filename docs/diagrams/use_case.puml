@@ -1,55 +1,67 @@
 @startuml ABU-SSO Use Case Diagram
-title ABU-SSO — Use Case Diagram
-
+title ABU-SSO — Central Identity Provider and Campus Services
 left to right direction
 skinparam packageStyle rectangle
 skinparam actorStyle awesome
-
 actor Student
 actor Staff
 actor Admin
-actor "Third-Party Service" as TPS
-
-rectangle "ABU-SSO" {
-  usecase "UC-01 Register Account" as UC01
-  usecase "UC-02 Log In" as UC02
-  usecase "UC-03 View Profile" as UC03
-  usecase "UC-04 View Digital ID Card" as UC04
-  usecase "UC-05 Top Up Wallet" as UC05
-  usecase "UC-06 Pay from Wallet" as UC06
-  usecase "UC-07 View Transaction History" as UC07
-  usecase "UC-08 SSO to Third-Party Service" as UC08
-  usecase "UC-09 Administer Users" as UC09
-  usecase "UC-10 Health Check" as UC10
+actor "Campus OIDC Client" as Client
+rectangle "Central ABU-SSO Identity Provider" {
+  usecase "Authenticate with matric/staff number" as UCLogin
+  usecase "Maintain / revoke central IdP session" as UCSession
+  usecase "View own profile" as UCProfile
+  usecase "View digital ID card" as UCID
+  usecase "Manage campus wallet" as UCWallet
+  usecase "View own Login & Security Activity" as UCActivity
+  usecase "Read own security notifications" as UCNotify
+  usecase "Administer users and clients" as UCAdmin
+  usecase "Inspect system-wide authentication audit" as UCAudit
+  usecase "Register and validate OIDC client callbacks" as UCRegistry
 }
-
-Student --> UC01
-Student --> UC02
-Student --> UC03
-Student --> UC04
-Student --> UC05
-Student --> UC06
-Student --> UC07
-Student --> UC08
-
-Staff --> UC01
-Staff --> UC02
-Staff --> UC03
-Staff --> UC04
-Staff --> UC05
-Staff --> UC06
-Staff --> UC07
-Staff --> UC08
-
-Admin --> UC09
-Admin --> UC03
-
-TPS --> UC08
-
-note right of UC08
-  Third-party services trust
-  the JWT issued by ABU-SSO,
-  enabling single sign-on.
+rectangle "Six Independent Campus Applications" {
+  usecase "Start OIDC Authorization Code Flow" as UCOIDC
+  usecase "Create service-local session" as UCLocal
+  usecase "Revalidate central session" as UCRevalidate
+  usecase "Access protected campus service" as UCProtected
+}
+Student --> UCLogin
+Student --> UCSession
+Student --> UCProfile
+Student --> UCID
+Student --> UCWallet
+Student --> UCActivity
+Student --> UCNotify
+Staff --> UCLogin
+Staff --> UCSession
+Staff --> UCProfile
+Staff --> UCID
+Staff --> UCWallet
+Staff --> UCActivity
+Staff --> UCNotify
+Admin --> UCAdmin
+Admin --> UCAudit
+Admin --> UCRegistry
+Client --> UCOIDC
+Client --> UCLocal
+Client --> UCRevalidate
+Client --> UCProtected
+UCOIDC .> UCSession : checks central session
+UCLocal .> UCOIDC : after successful authorization
+UCProtected .> UCRevalidate : requires current authorization
+note right of UCActivity
+  Users can view only their own
+  login, service-access and
+  security-notification records.
+  Notifications retain read/unread state.
 end note
-
+note right of UCAudit
+  Administrators have system-wide
+  authentication audit visibility.
+end note
+note bottom of UCProtected
+  Campus Wi-Fi is represented as a browser-based
+  OIDC portal. RADIUS / 802.1X network enforcement
+  is outside this prototype's scope.
+end note
 @enduml
