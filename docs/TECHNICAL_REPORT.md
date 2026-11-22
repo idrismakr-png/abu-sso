@@ -433,3 +433,25 @@ In accordance with COEN838 exam instruction F ("Ensure responsible and ethical u
 
 Summary: DeepSeek was used as a conversational coding tutor — assisting with environment setup, explaining error messages, suggesting patterns, and reviewing documentation structure. All engineering decisions, architectural choices, testing strategy, deployment plan, and written narrative are the candidate's own work. Every AI-suggested fix was verified by running the code and inspecting the result.
 
+
+
+---
+
+## Implementation Update — 22 November 2026
+
+### Deployed federation
+
+The current deployment consists of the central ABU-SSO identity provider and six separately deployed campus OIDC clients: Student Portal, LMS, Library, Hostel, Campus Wi-Fi portal and Result Checker. The clients use OIDC Authorization Code Flow with PKCE (S256), explicit issuer/authorization/token/JWKS/UserInfo endpoint configuration and independent local service sessions. The OIDC client endpoint configuration was updated to avoid repeated discovery requests during service login.
+
+### Central session lifecycle
+
+The central IdP maintains a database-backed browser session. It can be checked for active status, expires according to its configured lifetime and can be revoked during central logout. The OIDC authorization endpoint checks this central session before completing authorization. The service-local session is distinct and must not be treated as a substitute for a current central IdP session.
+
+### Dashboard activity and notifications
+
+The central user dashboard now presents one **Login & Security Activity** panel instead of separate Latest Login Activity and Security Notifications panels. The combined feed merges the user's latest central login, latest successful access to each campus service and security notifications by timestamp. It retains notification read/unread status and the mark-as-read action. The underlying authentication events and notification records remain separate data records. User-facing endpoints are scoped to the authenticated user; administrators retain system-wide audit access.
+
+### Verification status and limitations
+
+The Student Portal was manually observed redirecting to central login when the central IdP session was not active. The six service deployments had previously been confirmed live after the explicit OIDC endpoint configuration change. The consolidated dashboard change was deployed independently. These observations do not establish that every logout, expiry, direct-URL and account-switching scenario has been tested on all six services. A full acceptance matrix using at least two distinct accounts remains outstanding. The browser-based Wi-Fi portal also does not implement RADIUS/802.1X network access.
+
