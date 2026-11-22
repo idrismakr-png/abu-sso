@@ -49,8 +49,8 @@ Following Sommerville (2016), maintenance is classified into four types. This pl
 | Type | % Effort | Driver | Examples for ABU-SSO |
 |------|:--------:|--------|----------------------|
 | **Corrective** | 20% | Reactive | Fix bug reports from students; patch login failures; resolve wallet balance discrepancies |
-| **Adaptive** | 20% | Reactive / Proactive | Migrate SQLite → PostgreSQL; upgrade to Python 3.14; integrate OIDC for ABU ICT; support new browsers |
-| **Perfective** | 50% | Proactive | Add admin dashboard; audit-log viewer; bulk user management; rate limiting; native mobile UI |
+| **Adaptive** | 20% | Reactive / Proactive | Maintain the deployed OIDC federation; integrate with official ABU ICT identity systems; support new browsers |
+| **Perfective** | 50% | Proactive | Extend admin audit filters; bulk user management; rate limiting; native mobile UI; complete multi-account acceptance testing |
 | **Preventive** | 10% | Proactive | Monthly `pip-audit`; refactor hot paths; expand test coverage to 100%; rotate JWT secret every 6 months |
 
 This allocation matches the industry pattern where **Perfective + Adaptive ≈ 70%** of maintenance effort, and **Corrective ≈ 20%**.
@@ -66,7 +66,7 @@ This allocation matches the industry pattern where **Perfective + Adaptive ≈ 7
 
 Every merge to `main` must satisfy:
 
-1. All **53+ automated tests** pass locally and in CI.
+1. The current automated test suite passes locally and in CI; record the exact run identifier and test counts for each release.
 2. Line **coverage ≥ 70%** (currently 96%).
 3. `bandit -r app/` reports **0 High/Medium findings**.
 4. `.env.example` reflects any new environment variables.
@@ -78,8 +78,8 @@ Every merge to `main` must satisfy:
 |-----------|---------------------|
 | **Month 0–3** | Corrective bug fixes reported by pilot users; expand test suite |
 | **Month 3–6** | Adaptive: migrate to PostgreSQL; add Docker Compose for local dev; integrate CI/CD to Render |
-| **Month 6–9** | Perfective: build admin dashboard (UC-09); add audit log; rate limiting via `slowapi` |
-| **Month 9–12** | Preventive: dependency refresh; security audit; prepare OIDC (RS256) upgrade |
+| **Month 6–9** | Perfective: enhance system-wide audit viewer; add rate limiting via `slowapi`; test logout/session revocation across all six services |
+| **Month 9–12** | Preventive: dependency refresh; security audit; review OIDC key rotation and federation security |
 | **Year 2** | Adaptive: integrate with real ABU ICT systems; add native mobile apps |
 
 ### 2.5 Metrics to Track in Production
@@ -117,4 +117,20 @@ If ABU-SSO is superseded (e.g., by an official ABU ICT identity provider), the m
 ---
 
 *End of Risk Register & Maintenance Plan.*
+
+
+
+---
+
+## 4. Current Operational Risks and Acceptance Checks (22 November 2026)
+
+| Risk / check | Why it matters | Current control or next action |
+|---|---|---|
+| Central IdP logout and service-local sessions drift | A service must not continue to expose protected content after central logout | Revalidate central authorization for protected service access; run a logout test against all six services |
+| Account switching between users | A shared browser must not silently reuse the previous user's identity | Test user A login → central logout → user B login on the same browser profile; verify displayed identity in every service |
+| Expired or revoked IdP session | A stale central cookie must not authorize new service access | Database-backed session expiry and revocation; test expiry and explicit logout |
+| Dashboard activity duplication | Separate panels can confuse users and repeat related events | One combined Login & Security Activity panel; retain separate underlying event and notification records |
+| Audit data visibility | Users must not view another user's history | User endpoints filter by authenticated user; administrator audit interface is separately role-protected |
+
+The current deployment and a successful manual Student Portal redirect are evidence of progress, not a substitute for the complete acceptance matrix. Do not mark account switching or all-six-service logout verification complete until those scenarios have been executed and recorded.
 
