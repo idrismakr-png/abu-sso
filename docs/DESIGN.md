@@ -34,8 +34,8 @@ The modular monolith was chosen because the project is built by a single develop
 ### 1.3 Inter-Component Communication
 
 - **Client → Server:** HTTP/1.1 with JSON bodies (or HTML for pages).
-- **Server → Third-party services:** synchronous REST; the JWT is forwarded in `Authorization: Bearer`.
-- **Service → IdP (for token verification):** synchronous REST call to `/auth/me`.
+- **Browser → Campus service:** OIDC Authorization Code Flow with PKCE; each service obtains its own local session after central authorization.
+- **Campus service → IdP:** browser redirects to `/authorize`; code exchange and OIDC validation use the registered token/JWKS/UserInfo endpoints.
 - **Style chosen:** synchronous request-response, because authentication decisions must be immediate.
 
 Future asynchronous events (e.g. "notify user on wallet top-up") would use a message broker — out of scope for this prototype.
@@ -98,7 +98,7 @@ Future asynchronous events (e.g. "notify user on wallet top-up") would use a mes
 | `app/static/css/style.css` |Green campus theme |
 | `app/static/js/app.js`     |Shared JS; page-specific logic inline in templates |
 
-The dashboard calls `/auth/me`, `/wallet`, `/wallet/transactions`, and `/id-card` using the JWT stored in `localStorage`. The admin page additionally calls `/admin/*`.
+The central dashboard calls `/auth/me`, `/wallet`, `/wallet/transactions`, `/id-card`, `/auth/activity` and `/auth/notifications` using the central application's bearer API token stored in browser local storage. The admin page additionally calls protected `/admin/*` endpoints. This central API token is distinct from the OIDC protocol used by the six campus clients.
 
 ---
 
@@ -205,9 +205,9 @@ Client receives 201 Created + transaction JSON
 ### 5.3 Known Limitations
 
 - No rate limiting yet (planned via `slowapi`).
-- No refresh tokens — users must log in every 15 minutes.
+- OIDC refresh tokens are not supported in the current federation flow. Central IdP browser sessions are persisted and time-limited; the six services maintain separate local sessions and revalidate access against the central IdP.
 - No async task queue — everything is synchronous in the request cycle.
-- Mock services use URL-based token passing (production would use cookies or BFF).
+- Campus clients use OIDC Authorization Code Flow with PKCE and service-local browser sessions; legacy query-string token passing is not the current federation mechanism.
 
 ---
 
@@ -247,7 +247,7 @@ Client receives 201 Created + transaction JSON
 
 ## 8. Distributed SSO Architecture (Mock Services)
 
-To demonstrate that ABU-SSO is genuinely a **distributed, service-oriented system** (not merely a login page), six independent mock services were built that trust ABU-SSO as their identity provider.
+To demonstrate a **distributed, service-oriented system**, six independently deployed campus applications (Student Portal, LMS, Library, Hostel, Wi-Fi and Result Checker) operate as OIDC clients and trust ABU-SSO as their central identity provider.
 
 ### 8.1 Why Three Services?
 
@@ -299,7 +299,7 @@ Building three separate services that **independently verify the SSO token** pro
 
 **Pattern used:** **Synchronous REST with token-based trust**.
 
-- Each service performs `GET {IDP_URL}/auth/me` with the JWT in the `Authorization` header.
+- Each service redirects the browser to the IdP authorization endpoint, exchanges the returned authorization code using PKCE, validates the OIDC response and creates a local session. Protected service access is subject to central-session revalidation.
 - Response is cached in-memory for the request duration (not persisted).
 - Latency cost: one additional HTTP round-trip (~5–10 ms locally).
 
@@ -357,4 +357,33 @@ This demonstrates the **single sign-on** guarantee end-to-end.
 
 *End of Design Document.*
 
+
+
+
+---
+
+## 9. Current OIDC Federation and Session Lifecycle (22 November 2026)
+
+The deployed federation uses OpenID Connect rather than the earlier demonstration design based on passing a legacy JWT in a query parameter.
+
+### 9.1 Browser sign-in sequence
+
+1. A user requests a protected page on one of the six campus services.
+2. The service initiates OIDC Authorization Code Flow with PKCE (S256) and redirects the browser to the central IdP.
+3. The IdP checks its database-backed browser session. If no valid session exists, it sends the user to the central login page. If a valid session exists, it can complete SSO without another password prompt.
+4. The service receives the authorization code at its registered callback and exchanges it at the IdP token endpoint using the PKCE verifier.
+5. The service validates the OIDC result and establishes its own local session.
+6. The service's local session is not a substitute for a valid central IdP session. Revalidation is used to prevent stale local service sessions from silently bypassing central logout or expiry.
+
+### 9.2 Logout and account switching
+
+The central logout endpoint revokes the database-backed IdP browser session and clears the abu_idp_session cookie. The central dashboard also removes its local API bearer token. Subsequent authorization must not reuse the revoked IdP session. A different user can authenticate by entering that user's own credentials at the central login page. Cross-service and multi-account acceptance testing remains a required verification activity.
+
+### 9.3 Activity and audit visibility
+
+The user dashboard presents one chronological **Login & Security Activity** panel. It combines the latest successful central login, the latest successful access for each campus service, and security notifications. Users can refresh the feed and mark their own notifications as read. User-facing activity and notifications are scoped to the authenticated user. Administrators retain a separate system-wide authentication audit interface/API; full audit records are not removed by dashboard consolidation.
+
+### 9.4 Explicit endpoint configuration
+
+Each service client is configured with the central issuer, authorization URL, token URL, JWKS URI and UserInfo endpoint. Static server metadata is supplied to avoid repeated discovery requests during client initialization. The public discovery endpoint remains part of the IdP protocol surface.
 
