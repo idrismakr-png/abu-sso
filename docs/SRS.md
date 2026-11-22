@@ -5,7 +5,7 @@
 **Department:** Computer Engineering, Ahmadu Bello University, Zaria  
 **Student:** Idris Muhammad Abubakar  
 **Matric No:** P25EGCP9003  
-**Version:** 1.1  
+**Version:** 1.2  
 **Date:** October 2026  
 
 ---
@@ -19,13 +19,13 @@ This Software Requirements Specification (SRS) defines the functional and non-fu
 ### 1.2 Scope
 
 **In scope:**
-- Central authentication service issuing JSON Web Tokens (JWT) for all ABU campus applications.
+- Central OpenID Connect (OIDC) identity provider authenticating users for all six ABU campus applications. The central web dashboard continues to use a bearer JWT for its own API.
 - **Matric / staff number-based login** - students and staff use their official university number as their identifier.
 - **Admin-controlled account creation** - after the first (bootstrap) admin, no public self-registration is permitted.
 - Digital ID card generation with QR code for physical access points (library, hostel).
 - Campus wallet allowing top-up, payments, and transaction history.
 - A web-based dashboard acting as the launchpad for connected campus services.
-- **Six distributed Single Sign-On services** - Student Portal, LMS, Library, Hostel, Wi-Fi, Result Checker — each a separate application that independently verifies the ABU-SSO JWT.
+- **Six distributed Single Sign-On services** - Student Portal, LMS, Library, Hostel, Wi-Fi, Result Checker — each a separate OIDC client using Authorization Code Flow with PKCE and a separate local service session.
 - Role-Based Access Control (student / staff / admin) enforced by middleware.
 
 **Out of scope (for this prototype):**
@@ -73,7 +73,7 @@ This Software Requirements Specification (SRS) defines the functional and non-fu
 
 ### 2.1 Product Perspective
 
-ABU-SSO is a **distributed, service-oriented system** in which a central identity provider (IdP) issues JWTs and six independent services trust those tokens. Each service is a **separate FastAPI application, deployed as a separate process**, in line with modern microservice principles.
+ABU-SSO is a **distributed, service-oriented system** in which a central OIDC identity provider authenticates users and six independent campus clients establish their own local sessions after successful authorization. Each service is a **separate FastAPI application, deployed as a separate process**, in line with modern microservice principles.
 
 **Architectural position:**
 abu-sso/
@@ -103,7 +103,7 @@ abu-sso/
 ### 2.2 Product Functions
 
 1. **User Account Management** — Login, logout, profile retrieval; account creation performed by administrators after the initial bootstrap.
-2. **Authentication & Session Management** — Issue and validate JWT access tokens; enforce 15-minute expiry.
+2. **Authentication & Session Management** — Authenticate users centrally, maintain a database-backed IdP browser session, issue OIDC authorization responses and support session expiry/revocation. The central dashboard API separately uses a short-lived bearer JWT.
 3. **Digital ID Card Generation** — Produce a QR-encoded identity card for each user.
 4. **Campus Wallet** — Self-service top-up, payment, and transaction history.
 5. **Web Dashboard** — Launchpad for connected services; shows wallet, ID card, and service cards.
@@ -421,4 +421,32 @@ See `docs/TECHNICAL_REPORT.md` § 11 for the complete list.
 ---
 
 *End of Software Requirements Specification (SRS).*
+
+
+
+---
+
+## 8. Current Implementation Clarifications and Additional Requirements (22 November 2026)
+
+### 8.1 Central identity and service sessions
+
+The central ABU-SSO application is the identity provider. The six campus services are independent OIDC clients using Authorization Code Flow with PKCE (S256). Each service establishes its own local session only after a successful central authorization. Service-local cookies are not shared between applications and must not independently authorize access when the central IdP session has expired or been revoked.
+
+### 8.2 Session and logout requirements
+
+- **FR-20 — Central IdP session lifecycle:** The IdP shall create a database-backed browser session after successful central login, enforce its expiry, and support revocation at logout.
+- **FR-21 — Central-session enforcement:** Each campus service shall redirect unauthenticated users to the central IdP and shall not grant protected access solely because a stale local service session exists.
+- **FR-22 — Logout enforcement:** After central logout, subsequent authorization requests shall not silently reuse the revoked IdP session; the user shall be required to authenticate again.
+- **FR-23 — Account switching:** After user A logs out centrally, user B shall be able to authenticate with B's own credentials without inheriting A's identity. This behaviour requires explicit multi-account acceptance testing across the six clients.
+- **FR-24 — User activity view:** The dashboard shall show the authenticated user's latest central login and latest successful access per campus service.
+- **FR-25 — Security notifications:** The dashboard shall present the user's security notifications with read/unread state and a mark-as-read action.
+- **FR-26 — Admin audit access:** Administrators shall retain system-wide authentication audit access; users shall only access their own activity and notification records.
+
+### 8.3 Consolidated dashboard presentation
+
+The user dashboard presents a single chronological **Login & Security Activity** panel. It combines the activity summary and security notifications without merging or deleting the underlying records. The refresh action reloads both data sources. The notification read state remains user-specific.
+
+### 8.4 Scope boundaries
+
+The browser-based Campus Wi-Fi portal is an OIDC-protected application. It is not, by itself, a RADIUS/802.1X network access controller. Production network authentication requires a separate integration with campus wireless infrastructure.
 
