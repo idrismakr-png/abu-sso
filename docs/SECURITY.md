@@ -33,7 +33,7 @@ STRIDE is applied to each major component.
 | **S**poofing | Attacker submits stolen credentials | bcrypt password verification; generic error message ("Invalid matric/staff number or password") prevents user enumeration |
 | **S**poofing | Attacker replays an old JWT | JWT includes `exp` (15-min expiry) — expired tokens rejected |
 | **T**ampering | Attacker modifies JWT payload (e.g. change `sub`) | HS256 signature; any tampering invalidates signature → 401 |
-| **R**epudiation | User denies having logged in | Login flow is deterministic; an audit log is listed as future work |
+| **R**epudiation | User denies having logged in | Authentication events and security notifications are persisted with application, outcome, timestamp and authentication-method context; administrator audit access is separately protected |
 | **I**nformation Disclosure | Passwords leaked via API | Passwords never returned; `password_hash` never serialised |
 | **I**nformation Disclosure | Error messages reveal user existence | Login returns one generic message regardless of whether the matric exists |
 | **D**enial of Service | Attacker floods `/auth/login` | Rate limiting **not yet implemented** (residual risk - see §5) |
@@ -73,9 +73,9 @@ STRIDE is applied to each major component.
 
 | Threat | Attack Scenario | Mitigation |
 |--------|-----------------|-----------|
-| **S**poofing | Attacker crafts a fake token for a service | Services do not decode tokens locally - they call the IdP's `/auth/me` and only trust the IdP's response |
-| **T**ampering | Attacker edits the token in the URL | Same — signature verification happens at the IdP |
-| **I**nformation Disclosure | Token visible in URL (query param) | Prototype limitation; production would use HttpOnly cookies or a BFF pattern |
+| **S**poofing | Attacker attempts to impersonate a user at a campus service | Each service uses OIDC Authorization Code Flow with PKCE and validates the IdP response before creating its local session |
+| **T**ampering | Attacker tampers with an authorization response | PKCE S256, registered redirect URIs, authorization-code validation and signed ID-token verification protect the OIDC flow |
+| **I**nformation Disclosure | Credentials or tokens exposed in URL | The current OIDC client flow uses authorization-code callbacks; do not pass legacy bearer tokens in query strings. Secrets and tokens must not be written to logs |
 | **D**enial of Service | IdP down | Services return HTTP 503 and serve no data (fail-secure) |
 
 ### 2.6 Database Layer
@@ -106,7 +106,7 @@ STRIDE is applied to each major component.
 
 ## 4. Authentication & Authorization Scheme
 
-### 4.1 Authentication — Matric + Password + JWT
+### 4.1 Central application API authentication — Matric + Password + JWT
 
 - **Identifier:** matric number (students) or staff number (staff). Email is **not** used for authentication.
 - **Password storage:** bcrypt with auto-generated salt (default work factor = 12).
@@ -214,8 +214,8 @@ Residual Risk	Mitigation Planned
 No rate limiting on /auth/login	Add slowapi with 5 attempts/min/IP
 No account lockout after N failures	Add exponential backoff
 No refresh tokens	Add /auth/refresh endpoint
-No audit log table	Add audit_logs table (login, wallet ops, admin actions)
-Tokens in URL (mock services)	Move to HttpOnly cookies or BFF pattern in production
+Authentication audit is implemented for IdP login and OIDC authorization events; extend coverage to additional business/admin actions where required
+Legacy query-string token passing is not the current six-service OIDC authentication flow
 No CSRF protection	JWT in Authorization header, not cookies — no CSRF vector today; revisit if we add cookie-based sessions
 No email verification	Moot — email not used for authentication
 No 2FA	Add TOTP (Google Authenticator) as optional 2nd factor
@@ -240,3 +240,19 @@ Secret management	.env gitignored; Render auto-generates
 Transport security	HTTPS (Render TLS)
 SAST	Bandit (0 findings)
 Test coverage of security	17 security-specific tests
+
+
+---
+
+## 9. Current OIDC and Session Security Controls (22 November 2026)
+
+The six campus applications use OIDC Authorization Code Flow with PKCE (S256). The central IdP signs ID tokens with RS256 and publishes public verification keys through JWKS. Each client has an exact registered callback URI and explicit issuer, authorization, token, JWKS and UserInfo endpoint configuration.
+
+The central IdP browser session is database-backed. The session token is stored hashed in the database, has an expiry, and can be revoked. The browser cookie is named abu_idp_session, is HttpOnly, uses Secure in HTTPS deployments and has a root path. The authorization endpoint checks the session before issuing an authorization response. A missing, expired or revoked session must lead to central authentication rather than service access.
+
+Each campus service has its own local session. This separation is intentional: local service cookies are not shared across applications, and a service-local session must not be treated as a replacement for central IdP authorization. The current service revalidation design is intended to detect central logout/expiry during later service access. Acceptance testing must still cover all six services, direct URLs, expired sessions, revocation and switching from account A to account B.
+
+The central dashboard's **Login & Security Activity** panel combines a user-scoped activity summary with user-scoped security notifications. Users can view their own records and mark their own notifications as read. Administrators have separate system-wide audit access. The panel consolidation is a presentation change; it does not delete or merge the underlying audit records.
+
+The central dashboard also uses a legacy bearer JWT for its own API endpoints. This is separate from the OIDC tokens and service sessions used by the six campus applications. Central logout clears the browser's IdP session cookie and the dashboard's local API token.
+
