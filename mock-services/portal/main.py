@@ -65,6 +65,8 @@ oauth = OAuth()
 oauth.register(
     name="abu_sso",
     client_id=CLIENT_ID,
+    authorize_url=f"{IDP_URL}/authorize",
+    access_token_url=f"{IDP_URL}/token",
     server_metadata={
         "issuer": IDP_URL,
         "authorization_endpoint": f"{IDP_URL}/authorize",
