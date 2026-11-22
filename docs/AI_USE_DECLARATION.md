@@ -105,3 +105,7 @@ I, **Idris Muhammad Abubakar (P25EGCP9003)**, declare that:
 ---
 
 *End of AI Use Declaration.*
+
+## Documentation maintenance note — 22 November 2026
+
+The project documentation was revised to reflect the deployed OIDC federation, central IdP session lifecycle, six independent campus clients, consolidated user Login & Security Activity panel, user-scoped notification access and administrator audit visibility. This maintenance note describes the documentation update; it does not claim that outstanding multi-account acceptance tests have been completed.
