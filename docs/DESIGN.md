@@ -291,11 +291,11 @@ Building three separate services that **independently verify the SSO token** pro
 | **Service boundary**   | Each service is a **standalone FastAPI app** in its own process | Independence — one can crash without affecting the others      |
 | **Data ownership**     | No service has a user table                                     | Single source of truth remains the IdP; services are stateless verifiers|
 | **Token verification** | HTTP call to `IdP/auth/me`                                      | Simpler than sharing the JWT secret; models how OIDC UserInfo works              |
-| **Token transport**    | URL query param `?token=<JWT>`                                  | Simplest cross-origin demo; production would use HttpOnly cookies or BFF pattern |
+| **Token transport**    | OIDC authorization code callback with PKCE                       | Current deployed federation; no bearer token in query string |
 | **Coupling**           | Loose — services know only the IdP's base URL                   | Swap or scale IdP without touching services                                      |
 | **Failure mode**       | If IdP is down, service returns HTTP 503                        | Fail-secure: never serve data without verification                                                                               |
 
-### 8.4 Inter-Service Communication Patterns
+### 8.4 Current Inter-Service Communication Pattern
 
 **Pattern used:** **Synchronous REST with token-based trust**.
 
@@ -343,10 +343,8 @@ Building three separate services that **independently verify the SSO token** pro
 
 1. User logs in once at ABU-SSO (`http://127.0.0.1:8000/login`).
 2. Dashboard renders four service cards.
-3. Clicking **Student Portal** opens `http://127.0.0.1:4001/?token=<JWT>`.
-4. The Portal service:
-   - Extracts the token from the query string.
-   - Calls `GET http://127.0.0.1:8000/auth/me` with the token.
+3. Clicking **Student Portal** opens the local service, which redirects to the central IdP authorization endpoint when needed.
+4. The Portal service initiates OIDC Authorization Code Flow with PKCE, handles the registered callback, validates the response and establishes a service-local session.
    - If the IdP returns 200, renders the Portal page with the user's profile.
    - If not, returns HTTP 401.
 5. Same flow for LMS and Library — **no second password prompt in any of them**.
