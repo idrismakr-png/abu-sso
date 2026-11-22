@@ -42,9 +42,9 @@
 <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
         <div>
-            <h2 style="margin-bottom:4px;">Latest Login Activity</h2>
+            <h2 style="margin-bottom:4px;">Login &amp; Security Activity</h2>
             <p style="color:#777; font-size:13px; margin-top:0;">
-                Showing your latest ABU-SSO login and latest access to each campus service.
+                Your latest ABU-SSO login, campus-service access and account security alerts.
             </p>
         </div>
         <button id="refresh-activity" type="button"
@@ -53,25 +53,7 @@
         </button>
     </div>
     <div id="activity-list" aria-live="polite">
-        <p style="color:#777; font-size:13px;">Loading activity...</p>
-    </div>
-</div>
-
-<div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-        <div>
-            <h2 style="margin-bottom:4px;">Security Notifications</h2>
-            <p style="color:#777; font-size:13px; margin-top:0;">
-                Recent sign-in and account security notifications.
-            </p>
-        </div>
-        <button id="refresh-notifications" type="button"
-                style="margin-top:0; background:#0b3d91;">
-            Refresh
-        </button>
-    </div>
-    <div id="notification-list" aria-live="polite">
-        <p style="color:#777; font-size:13px;">Loading notifications...</p>
+        <p style="color:#777; font-size:13px;">Loading login and security activity...</p>
     </div>
 </div>
 
@@ -237,121 +219,87 @@ function formatActivityDate(value) {
     return date.toLocaleString();
 }
 
-async function loadAuthenticationActivity() {
+async function loadLoginSecurityActivity() {
     const box = document.getElementById("activity-list");
-    box.textContent = "Loading activity...";
+    box.textContent = "Loading login and security activity...";
 
     try {
-        const activities = await api("/auth/activity");
-        if (!activities) return;
+        const [activities, notifications] = await Promise.all([
+            api("/auth/activity"),
+            api("/auth/notifications?limit=50")
+        ]);
+        if (!activities || !notifications) return;
 
-        if (activities.length === 0) {
-            box.textContent = "No authentication activity recorded yet.";
+        const entries = [
+            ...activities.map(activity => ({
+                kind: "activity",
+                date: activity.occurred_at,
+                data: activity
+            })),
+            ...notifications.map(notification => ({
+                kind: "notification",
+                date: notification.created_at,
+                data: notification
+            }))
+        ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (entries.length === 0) {
+            box.textContent = "No login, service-access or security activity recorded yet.";
             return;
         }
 
         box.replaceChildren();
 
-        activities.forEach(activity => {
+        entries.forEach(entry => {
             const row = document.createElement("div");
-            row.style.cssText =
-                "padding:12px 0; border-bottom:1px solid #eee;";
-
-            const heading = document.createElement("div");
-            heading.style.cssText =
-                "display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;";
-
-            const appName = document.createElement("strong");
-            appName.textContent =
-                activity.application_name || "ABU application";
-
-            const status = document.createElement("span");
-            status.textContent =
-                activity.outcome === "success" ? "Successful" : "Failed";
-            status.style.color =
-                activity.outcome === "success" ? "#188038" : "#b71c1c";
-
-            const details = document.createElement("p");
-            details.style.cssText =
-                "margin:5px 0 0; color:#666; font-size:13px;";
-
-            const isServiceAccess =
-                activity.application_name !== "ABU-SSO Portal" &&
-                activity.event_type === "authorization";
-
-            const activityLabel = isServiceAccess
-                ? "access"
-                : activity.event_type;
-
-            const method = isServiceAccess
-                ? "single sign-on"
-                : (activity.authentication_method
-                    ? activity.authentication_method.replaceAll("_", " ")
-                    : "Authentication method unavailable");
-
-            details.textContent =
-                activityLabel + " • " + method +
-                " • " + formatActivityDate(activity.occurred_at);
-
-            heading.append(appName, status);
-            row.append(heading, details);
-            box.appendChild(row);
-        });
-    } catch (error) {
-        box.textContent = "Unable to load authentication activity. Please try again.";
-    }
-}
-
-document.getElementById("refresh-activity").addEventListener(
-    "click",
-    loadAuthenticationActivity
-);
-
-function formatNotificationDate(value) {
-    return formatActivityDate(value);
-}
-
-async function loadSecurityNotifications() {
-    const box = document.getElementById("notification-list");
-    box.textContent = "Loading notifications...";
-
-    try {
-        const notifications = await api("/auth/notifications?limit=50");
-        if (!notifications) return;
-
-        if (notifications.length === 0) {
-            box.textContent = "No sign-in notifications yet.";
-            return;
-        }
-
-        box.replaceChildren();
-        notifications.forEach(notification => {
-            const row = document.createElement("div");
-            row.style.cssText =
-                "padding:12px 0; border-bottom:1px solid #eee;";
+            row.style.cssText = "padding:12px 0; border-bottom:1px solid #eee;";
 
             const heading = document.createElement("div");
             heading.style.cssText =
                 "display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;";
 
             const title = document.createElement("strong");
-            title.textContent = notification.title;
-
             const state = document.createElement("span");
-            state.textContent = notification.read_at ? "Read" : "New";
-            state.style.color = notification.read_at ? "#777" : "#0b3d91";
+            const details = document.createElement("p");
+            details.style.cssText = "margin:5px 0 0; color:#666; font-size:13px;";
 
-            const message = document.createElement("p");
-            message.style.cssText =
-                "margin:5px 0 0; color:#666; font-size:13px;";
-            message.textContent =
-                notification.message + " • " +
-                formatNotificationDate(notification.created_at);
+            if (entry.kind === "activity") {
+                const activity = entry.data;
+                const isServiceAccess =
+                    activity.application_name !== "ABU-SSO Portal" &&
+                    activity.event_type === "authorization";
+
+                title.textContent = isServiceAccess
+                    ? (activity.application_name || "Campus service") + " access"
+                    : (activity.application_name || "ABU-SSO") + " login";
+
+                state.textContent =
+                    activity.outcome === "success" ? "Successful" : "Failed";
+                state.style.color =
+                    activity.outcome === "success" ? "#188038" : "#b71c1c";
+
+                const method = isServiceAccess
+                    ? "Single sign-on"
+                    : (activity.authentication_method
+                        ? activity.authentication_method.replaceAll("_", " ")
+                        : "Authentication method unavailable");
+
+                details.textContent =
+                    method + " • " + formatActivityDate(activity.occurred_at);
+            } else {
+                const notification = entry.data;
+                title.textContent = notification.title;
+                state.textContent = notification.read_at ? "Read" : "New";
+                state.style.color = notification.read_at ? "#777" : "#0b3d91";
+                details.textContent =
+                    notification.message + " • " +
+                    formatActivityDate(notification.created_at);
+            }
 
             heading.append(title, state);
-            row.append(heading, message);
+            row.append(heading, details);
 
-            if (!notification.read_at) {
+            if (entry.kind === "notification" && !entry.data.read_at) {
                 const markRead = document.createElement("button");
                 markRead.type = "button";
                 markRead.textContent = "Mark as read";
@@ -362,10 +310,10 @@ async function loadSecurityNotifications() {
                     try {
                         await api(
                             "/auth/notifications/" +
-                            encodeURIComponent(notification.id) + "/read",
+                            encodeURIComponent(entry.data.id) + "/read",
                             { method: "PATCH" }
                         );
-                        await loadSecurityNotifications();
+                        await loadLoginSecurityActivity();
                     } catch (error) {
                         markRead.disabled = false;
                     }
@@ -376,20 +324,14 @@ async function loadSecurityNotifications() {
             box.appendChild(row);
         });
     } catch (error) {
-        box.textContent = "Unable to load sign-in notifications. Please try again.";
+        box.textContent = "Unable to load login and security activity. Please try again.";
     }
 }
 
-const refreshNotificationsButton =
-    document.getElementById("refresh-notifications");
-
-if (refreshNotificationsButton) {
-    refreshNotificationsButton.addEventListener(
-        "click",
-        loadSecurityNotifications
-    );
-}
-
+document.getElementById("refresh-activity").addEventListener(
+    "click",
+    loadLoginSecurityActivity
+);
 
 document.getElementById("logout-btn").addEventListener("click", async () => {
     try {
@@ -409,8 +351,7 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
         await loadProfile();
         await loadWallet();
         await loadIdCard();
-        await loadAuthenticationActivity();
-        await loadSecurityNotifications();
+        await loadLoginSecurityActivity();
     } catch (err) {
         const box = document.getElementById("error-box");
         box.textContent = err.message;
