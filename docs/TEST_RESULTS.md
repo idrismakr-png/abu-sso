@@ -220,3 +220,33 @@ Test-driven development wasn't followed literally, but tests still caught real b
 "no such table: users" in integration tests — caused by two separate SQLAlchemy engines pointing at different in-memory SQLite databases. Fixed by switching to a single engine with StaticPool (commit 924b6e1).
 
 JWT secret too short — the placeholder change-me-in-production (23 bytes) triggered InsecureKeyLengthWarning. Fixed by extending the default and reading it from .env (RFC 7518 compliance).
+
+---
+
+## 11. Deployment and Manual Acceptance Evidence — 22 November 2026
+
+This section records deployment observations separately from automated test results. No new automated test count or coverage figure is asserted by this documentation update.
+
+| Item | Evidence available | Status / boundary |
+|---|---|---|
+| Central IdP dashboard JavaScript fix | Render deployment for commit f869e573 was confirmed live | Deployed |
+| Restored dashboard Security Notifications section | Same Render deployment | Deployed |
+| Consolidated Login & Security Activity panel | Render deployment for commit 7796e755 was confirmed live | Deployed |
+| Six OIDC service endpoint configuration | Six Render deployments for commit 596a6d5 were confirmed live | Deployed |
+| Student Portal after central session ended | User manually observed redirect to central login | Observed on Student Portal only |
+| Logout and account switching across all six services | No complete two-account test matrix recorded here | Pending acceptance testing |
+| Expired/revoked session and direct URL checks across all services | Not fully recorded in this document | Pending acceptance testing |
+
+### 11.1 Manual acceptance test matrix
+
+Run these tests in the same browser profile, and record the outcome for each of the six services:
+
+1. **Fresh login:** Open a service with no active central IdP session. Expected: redirect to central login.
+2. **SSO reuse:** Sign in centrally, then open another service. Expected: service completes OIDC authorization without asking for the password again.
+3. **Central logout:** Log out from the central dashboard, then open a protected service URL. Expected: redirect to central login.
+4. **Direct URL:** Paste a protected service URL into a new tab without an active central session. Expected: no protected service content before central authentication.
+5. **Account switch:** Sign in as user A, log out centrally, then sign in as user B in the same browser profile. Expected: the dashboard and all services show user B, not user A.
+6. **Session expiry/revocation:** Repeat service access after the central session expires or is revoked. Expected: central authentication is required.
+
+Do not mark a scenario as passed until it has been executed and its result recorded. The successful Student Portal redirect is evidence for that service and that test condition only; it does not prove the full matrix.
+
