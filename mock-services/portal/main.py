@@ -67,6 +67,9 @@ oauth.register(
     client_id=CLIENT_ID,
     authorize_url=f"{IDP_URL}/authorize",
     access_token_url=f"{IDP_URL}/token",
+    issuer=IDP_URL,
+    jwks_uri=f"{IDP_URL}/jwks.json",
+    userinfo_endpoint=f"{IDP_URL}/userinfo",
     server_metadata={
         "issuer": IDP_URL,
         "authorization_endpoint": f"{IDP_URL}/authorize",
